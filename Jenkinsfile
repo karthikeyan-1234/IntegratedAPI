@@ -1,11 +1,9 @@
 pipeline {
     agent any
-
     environment {
         DOCKER_IMAGE = 'karthiknat/integratedapi'
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
-
     stages {
         stage('Checkout') {
             steps {
@@ -13,7 +11,18 @@ pipeline {
                 git branch: 'master', url: 'https://github.com/karthikeyan-1234/IntegratedAPI.git'
             }
         }
-
+        stage('Clean Build Artifacts') {
+            steps {
+                echo 'Cleaning previous build artifacts...'
+                script {
+                    bat '''
+                        if exist obj rmdir /s /q obj
+                        if exist bin rmdir /s /q bin
+                        if exist publish rmdir /s /q publish
+                    '''
+                }
+            }
+        }
         stage('Build .NET Project') {
             steps {
                 echo 'Building IntegratedAPI project...'
@@ -23,7 +32,6 @@ pipeline {
                 }
             }
         }
-
         stage('Publish .NET Project') {
             steps {
                 echo 'Publishing project...'
@@ -32,7 +40,6 @@ pipeline {
                 }
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image...'
@@ -41,7 +48,6 @@ pipeline {
                 }
             }
         }
-
         stage('Push to Docker Hub') {
             steps {
                 echo 'Pushing Docker image to Docker Hub...'
@@ -54,7 +60,6 @@ pipeline {
                 }
             }
         }
-
         stage('Deploy to Kubernetes') {
             steps {
                 echo 'Deploying IntegratedAPI and SQL Server to Docker Desktop Kubernetes...'
@@ -62,7 +67,6 @@ pipeline {
                     withCredentials([file(credentialsId: 'kube-config', variable: 'KUBECONFIG')]) {
                         // Deploy SQL Server if not already present
                         bat "kubectl apply -f sqlserver-deploy.yml --kubeconfig=%KUBECONFIG% || echo 'SQL Server already deployed.'"
-
                         // Deploy the Integrated API
                         bat "kubectl apply -f integratedapi-deploy.yml --kubeconfig=%KUBECONFIG%"
                         
@@ -74,7 +78,6 @@ pipeline {
             }
         }
     }
-
     post {
         success {
             echo '✅ Build, Docker image creation, push, and deployment successful!'
