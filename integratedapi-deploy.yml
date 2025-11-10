@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: integratedapi-deployment
+  labels:
+    app: integratedapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: integratedapi
+  template:
+    metadata:
+      labels:
+        app: integratedapi
+    spec:
+      containers:
+        - name: integratedapi
+          image: karthiknat/integratedapi:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+
+            # Connection string matches your SQL Server service definition
+            - name: ConnectionStrings__DefaultConnection
+              value: "Server=sqlserver-service,1433;Database=IntegratedDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 7080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 7080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: integratedapi-service
+  labels:
+    app: integratedapi
+spec:
+  type: NodePort
+  selector:
+    app: integratedapi
+  ports:
+    - protocol: TCP
+      port: 7080
+      targetPort: 7080
+      nodePort: 30080
