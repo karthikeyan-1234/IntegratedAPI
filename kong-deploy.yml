@@ -1,3 +1,23 @@
+# kong-deploy.yml
+# Integrated deployment for Kong 3.4 + Postgres 15
+# Includes PV/PVC, database, migration job, and Kong gateway
+# Namespace: default
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kong-postgres-pv
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /var/k8s/kong-postgres
+    type: DirectoryOrCreate
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -11,7 +31,23 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: standard  # Change if your cluster uses a different StorageClass
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-database
+  labels:
+    app: kong-database
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
+  selector:
+    app: kong-database
 
 ---
 apiVersion: apps/v1
@@ -36,71 +72,63 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5432
+              name: postgres
           env:
             - name: POSTGRES_USER
-              value: kong
+              value: "kong"
             - name: POSTGRES_PASSWORD
-              value: kong
+              value: "kong"
             - name: POSTGRES_DB
-              value: kong
+              value: "kong"
           volumeMounts:
-            - name: postgres-storage
-              mountPath: /var/lib/postgresql/data
+            - mountPath: /var/lib/postgresql/data
+              name: pgdata
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "kong"]
-            initialDelaySeconds: 10
+              command:
+                - sh
+                - -c
+                - "pg_isready -U kong -h localhost"
+            initialDelaySeconds: 20
             periodSeconds: 10
-          livenessProbe:
-            exec:
-              command: ["pg_isready", "-U", "kong"]
-            initialDelaySeconds: 30
-            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 10
       volumes:
-        - name: postgres-storage
+        - name: pgdata
           persistentVolumeClaim:
             claimName: kong-postgres-pvc
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: kong-database
-  labels:
-    app: kong-database
-spec:
-  type: ClusterIP
-  selector:
-    app: kong-database
-  ports:
-    - port: 5432
-      targetPort: 5432
-      name: postgres
 
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: kong-bootstrap
+  labels:
+    app: kong
 spec:
+  backoffLimit: 1
   template:
+    metadata:
+      labels:
+        job: kong-bootstrap
     spec:
+      restartPolicy: OnFailure
       containers:
-        - name: kong-migrations
+        - name: kong-bootstrap
           image: kong:3.4
+          imagePullPolicy: IfNotPresent
           env:
             - name: KONG_DATABASE
-              value: postgres
+              value: "postgres"
             - name: KONG_PG_HOST
-              value: kong-database
+              value: "kong-database"
             - name: KONG_PG_USER
-              value: kong
+              value: "kong"
             - name: KONG_PG_PASSWORD
-              value: kong
+              value: "kong"
             - name: KONG_PG_DATABASE
-              value: kong
-          command: ["/bin/sh", "-c", "kong migrations bootstrap && kong migrations up"]
-      restartPolicy: OnFailure
+              value: "kong"
+          command: ["kong", "migrations", "bootstrap"]
 
 ---
 apiVersion: apps/v1
@@ -123,42 +151,65 @@ spec:
         - name: kong
           image: kong:3.4
           imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: proxy
+            - containerPort: 8443
+              name: proxy-ssl
+            - containerPort: 8001
+              name: admin
+            - containerPort: 8444
+              name: admin-ssl
           env:
             - name: KONG_DATABASE
-              value: postgres
+              value: "postgres"
             - name: KONG_PG_HOST
-              value: kong-database
+              value: "kong-database"
             - name: KONG_PG_USER
-              value: kong
+              value: "kong"
             - name: KONG_PG_PASSWORD
-              value: kong
+              value: "kong"
             - name: KONG_PG_DATABASE
-              value: kong
-            - name: KONG_PROXY_ACCESS_LOG
-              value: /dev/stdout
-            - name: KONG_ADMIN_ACCESS_LOG
-              value: /dev/stdout
-            - name: KONG_PROXY_ERROR_LOG
-              value: /dev/stderr
-            - name: KONG_ADMIN_ERROR_LOG
-              value: /dev/stderr
+              value: "kong"
+            - name: KONG_PROXY_LISTEN
+              value: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
             - name: KONG_ADMIN_LISTEN
-              value: 0.0.0.0:8001, 0.0.0.0:8444 ssl
-          ports:
-            - name: proxy
-              containerPort: 8000
-            - name: proxy-ssl
-              containerPort: 8443
-            - name: admin
-              containerPort: 8001
-            - name: admin-ssl
-              containerPort: 8444
+              value: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
+            - name: KONG_ANONYMOUS_REPORTS
+              value: "off"
           readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          livenessProbe:
             httpGet:
               path: /status
               port: 8001
-            initialDelaySeconds: 10
+            initialDelaySeconds: 20
             periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-proxy
+  labels:
+    app: kong
+spec:
+  type: NodePort
+  selector:
+    app: kong
+  ports:
+    - name: proxy
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+      nodePort: 30080
+    - name: proxy-ssl
+      port: 8443
+      targetPort: 8443
+      protocol: TCP
+      nodePort: 30443
 
 ---
 apiVersion: v1
@@ -168,32 +219,13 @@ metadata:
   labels:
     app: kong
 spec:
-  type: NodePort     # Use LoadBalancer if on a managed cloud cluster
+  type: ClusterIP
+  selector:
+    app: kong
   ports:
-    - name: kong-admin
+    - name: admin
       port: 8001
       targetPort: 8001
-      nodePort: 30001
-  selector:
-    app: kong
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: kong-proxy
-  labels:
-    app: kong
-spec:
-  type: NodePort     # Use LoadBalancer if you want external access to APIs
-  ports:
-    - name: kong-proxy
-      port: 8000
-      targetPort: 8000
-      nodePort: 30000
-    - name: kong-proxy-ssl
-      port: 8443
-      targetPort: 8443
-      nodePort: 30443
-  selector:
-    app: kong
+    - name: admin-ssl
+      port: 8444
+      targetPort: 8444

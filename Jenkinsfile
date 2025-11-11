@@ -60,41 +60,40 @@ pipeline {
                 }
             }
         }
-        stage('Deploy to Kubernetes') {
-            steps {
-                echo 'Deploying SQL Server, IntegratedAPI, and Kong to Kubernetes...'
-                script {
-                    withCredentials([file(credentialsId: 'kube-config', variable: 'KUBECONFIG')]) {
+		stage('Deploy to Kubernetes') {
+			steps {
+				echo 'Deploying SQL Server, IntegratedAPI, and Kong to Kubernetes...'
+				script {
+					withCredentials([file(credentialsId: 'kube-config', variable: 'KUBECONFIG')]) {
+						// Deploy SQL Server if not already present
+						bat "kubectl apply -f sqlserver-deploy.yml --kubeconfig=%KUBECONFIG% || echo 'SQL Server already deployed.'"
+						
+						// Deploy the Integrated API
+						bat "kubectl apply -f integratedapi-deploy.yml --kubeconfig=%KUBECONFIG%"
 
-                        // Deploy SQL Server if not already present
-                        bat "kubectl apply -f sqlserver-deploy.yml --kubeconfig=%KUBECONFIG% || echo 'SQL Server already deployed.'"
+						// --- KONG DEPLOYMENT START ---
+						echo 'Deploying Kong API Gateway and its database...'
+						bat "kubectl apply -f kong-deploy.yml --kubeconfig=%KUBECONFIG%"
 
-                        // Deploy Integrated API
-                        bat "kubectl apply -f integratedapi-deploy.yml --kubeconfig=%KUBECONFIG%"
+						echo 'Waiting for Kong database to be ready...'
+						bat """
+						kubectl rollout status deployment/kong-database --timeout=180s --kubeconfig=%KUBECONFIG% || (
+							echo '❌ Kong DB not ready in time. Dumping pod logs for troubleshooting...' &&
+							kubectl describe pod -l app=kong-database --kubeconfig=%KUBECONFIG% &&
+							kubectl logs -l app=kong-database --kubeconfig=%KUBECONFIG%
+						)
+						"""
 
-                        // 🦍 Deploy Kong (database + migrations + gateway)
-                        echo 'Deploying Kong API Gateway and its database...'
-                        bat "kubectl apply -f kong-deploy.yml --kubeconfig=%KUBECONFIG%"
+						echo 'Running Kong bootstrap job...'
+						bat "kubectl wait --for=condition=complete --timeout=120s job/kong-bootstrap --kubeconfig=%KUBECONFIG% || echo 'Kong bootstrap may still be running'"
 
-                        // Wait for Postgres DB to be ready before running migrations
-                        echo 'Waiting for Kong database to be ready...'
-                        bat "kubectl rollout status deployment/kong-database --timeout=120s --kubeconfig=%KUBECONFIG%"
-
-                        // Wait for Kong migration job to finish
-                        echo 'Waiting for Kong migrations job to complete...'
-                        bat "kubectl wait --for=condition=complete job/kong-migration --timeout=120s --kubeconfig=%KUBECONFIG% || echo '⚠️ Kong migration job may still be running'"
-
-                        // Wait for Kong Gateway to become ready
-                        echo 'Waiting for Kong deployment rollout...'
-                        bat "kubectl rollout status deployment/kong --timeout=180s --kubeconfig=%KUBECONFIG%"
-
-                        // Restart & verify rollout for IntegratedAPI
-                        bat "kubectl rollout restart deployment/integratedapi-deployment --kubeconfig=%KUBECONFIG%"
-                        bat "kubectl rollout status deployment/integratedapi-deployment --timeout=120s --kubeconfig=%KUBECONFIG%"
-                    }
-                }
-            }
-        }
+						echo 'Verifying Kong gateway rollout...'
+						bat "kubectl rollout status deployment/kong --timeout=180s --kubeconfig=%KUBECONFIG%"
+						// --- KONG DEPLOYMENT END ---
+					}
+				}
+			}
+		}
     }
     post {
         success {
