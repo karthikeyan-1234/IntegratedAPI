@@ -62,17 +62,34 @@ pipeline {
         }
         stage('Deploy to Kubernetes') {
             steps {
-                echo 'Deploying IntegratedAPI and SQL Server to Docker Desktop Kubernetes...'
+                echo 'Deploying SQL Server, IntegratedAPI, and Kong to Kubernetes...'
                 script {
                     withCredentials([file(credentialsId: 'kube-config', variable: 'KUBECONFIG')]) {
                         // Deploy SQL Server if not already present
                         bat "kubectl apply -f sqlserver-deploy.yml --kubeconfig=%KUBECONFIG% || echo 'SQL Server already deployed.'"
+                        
                         // Deploy the Integrated API
                         bat "kubectl apply -f integratedapi-deploy.yml --kubeconfig=%KUBECONFIG%"
                         
-                        // Restart & verify rollout
+                        // Deploy Kong API Gateway
+                        bat "kubectl apply -f kong-deploy.yml --kubeconfig=%KUBECONFIG%"
+                        
+                        // Restart & verify rollout for IntegratedAPI
                         bat "kubectl rollout restart deployment/integratedapi-deployment --kubeconfig=%KUBECONFIG%"
                         bat "kubectl rollout status deployment/integratedapi-deployment --kubeconfig=%KUBECONFIG%"
+                        
+                        // Verify Kong deployment
+                        bat "kubectl rollout status deployment/kong -n kong --kubeconfig=%KUBECONFIG%"
+                        
+                        // Wait for Kong to be ready before running config job
+                        bat "timeout /t 15 /nobreak"
+                        
+                        // Delete old config job if exists and create new one
+                        bat "kubectl delete job kong-config-job -n kong --kubeconfig=%KUBECONFIG% --ignore-not-found=true"
+                        bat "kubectl apply -f kong-deploy.yml --kubeconfig=%KUBECONFIG%"
+                        
+                        // Wait for Kong configuration to complete
+                        bat "kubectl wait --for=condition=complete --timeout=60s job/kong-config-job -n kong --kubeconfig=%KUBECONFIG% || echo 'Kong config job may still be running'"
                     }
                 }
             }
@@ -81,7 +98,10 @@ pipeline {
     post {
         success {
             echo '✅ Build, Docker image creation, push, and deployment successful!'
-            echo '🌐 IntegratedAPI accessible at http://localhost:30080'
+            echo '🌐 IntegratedAPI (direct) accessible at http://localhost:30080'
+            echo '🦍 Kong API Gateway accessible at http://localhost:30800'
+            echo '📡 Access your API via Kong at http://localhost:30800/api'
+            echo '⚙️ Kong Admin API at http://localhost:30801'
             echo '🗄️ SQL Server available via sqlserver-service:1433 inside the cluster.'
         }
         failure {
