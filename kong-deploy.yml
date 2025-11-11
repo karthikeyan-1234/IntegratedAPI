@@ -1,0 +1,156 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kong
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-proxy
+  namespace: kong
+spec:
+  type: NodePort
+  ports:
+  - name: proxy
+    port: 8000
+    targetPort: 8000
+    nodePort: 30800
+    protocol: TCP
+  - name: proxy-ssl
+    port: 8443
+    targetPort: 8443
+    nodePort: 30843
+    protocol: TCP
+  selector:
+    app: kong
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-admin
+  namespace: kong
+spec:
+  type: NodePort
+  ports:
+  - name: admin
+    port: 8001
+    targetPort: 8001
+    nodePort: 30801
+    protocol: TCP
+  selector:
+    app: kong
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong
+  namespace: kong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kong
+  template:
+    metadata:
+      labels:
+        app: kong
+    spec:
+      containers:
+      - name: kong
+        image: kong:3.5
+        env:
+        - name: KONG_DATABASE
+          value: "off"
+        - name: KONG_PROXY_ACCESS_LOG
+          value: "/dev/stdout"
+        - name: KONG_ADMIN_ACCESS_LOG
+          value: "/dev/stdout"
+        - name: KONG_PROXY_ERROR_LOG
+          value: "/dev/stderr"
+        - name: KONG_ADMIN_ERROR_LOG
+          value: "/dev/stderr"
+        - name: KONG_ADMIN_LISTEN
+          value: "0.0.0.0:8001"
+        - name: KONG_PROXY_LISTEN
+          value: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+        ports:
+        - name: proxy
+          containerPort: 8000
+          protocol: TCP
+        - name: proxy-ssl
+          containerPort: 8443
+          protocol: TCP
+        - name: admin
+          containerPort: 8001
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: 8001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: 8001
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+# Kong Service definition pointing to your IntegratedAPI
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-config
+  namespace: kong
+data:
+  configure-kong.sh: |
+    #!/bin/sh
+    echo "Waiting for Kong Admin API to be ready..."
+    until curl -s http://kong-admin.kong.svc.cluster.local:8001/status > /dev/null; do
+      echo "Kong not ready yet, waiting..."
+      sleep 5
+    done
+    
+    echo "Kong is ready! Configuring services and routes..."
+    
+    # Create a service pointing to your IntegratedAPI
+    curl -i -X POST http://kong-admin.kong.svc.cluster.local:8001/services \
+      --data name=integratedapi-service \
+      --data url='http://integratedapi-service.default.svc.cluster.local:7080'
+    
+    # Create a route for the service
+    curl -i -X POST http://kong-admin.kong.svc.cluster.local:8001/services/integratedapi-service/routes \
+      --data 'paths[]=/api' \
+      --data 'name=integratedapi-route'
+    
+    # Enable rate limiting (100 requests per minute)
+    curl -i -X POST http://kong-admin.kong.svc.cluster.local:8001/services/integratedapi-service/plugins \
+      --data "name=rate-limiting" \
+      --data "config.minute=100" \
+      --data "config.policy=local"
+    
+    echo "Kong configuration complete!"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kong-config-job
+  namespace: kong
+spec:
+  template:
+    spec:
+      containers:
+      - name: kong-config
+        image: curlimages/curl:latest
+        command: ["/bin/sh"]
+        args: ["/config/configure-kong.sh"]
+        volumeMounts:
+        - name: config
+          mountPath: /config
+      volumes:
+      - name: config
+        configMap:
+          name: kong-config
+          defaultMode: 0755
+      restartPolicy: OnFailure
+  backoffLimit: 10
