@@ -46,7 +46,8 @@ pipeline {
                 echo "Building Docker image..."
                 script {
                     bat 'docker buildx create --use || echo "buildx already exists"'
-                    bat "docker buildx build --platform linux/amd64 -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest ."
+                    // Add --load to export image to local docker images
+                    bat "docker buildx build --platform linux/amd64 -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest --load ."
                 }
             }
         }
