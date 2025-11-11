@@ -1,15 +1,7 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: integratedapi-config
-data:
-  SERVICE_URL: "http://integratedapi:8080"
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: integratedapi
+  name: integratedapi-deployment
   labels:
     app: integratedapi
 spec:
@@ -24,7 +16,8 @@ spec:
     spec:
       containers:
         - name: integratedapi
-          image: karthiknat/integratedapi:28
+          image: karthiknat/integratedapi:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           env:
@@ -34,86 +27,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: integratedapi
+  name: integratedapi-service
+  labels:
+    app: integratedapi
 spec:
+  type: ClusterIP
   selector:
     app: integratedapi
   ports:
-    - protocol: TCP
-      port: 8080
+    - port: 8080
       targetPort: 8080
-  type: ClusterIP
-
----
-# Kong Service
-apiVersion: configuration.konghq.com/v1
-kind: KongIngress
-metadata:
-  name: integratedapi-ingress
-route:
-  methods:
-    - GET
-    - POST
-    - PUT
-    - DELETE
-
----
-apiVersion: configuration.konghq.com/v1
-kind: KongPlugin
-metadata:
-  name: cors-plugin
-plugin: cors
-config:
-  origins:
-    - "*"
-  methods:
-    - GET
-    - POST
-    - PUT
-    - DELETE
-  headers:
-    - Accept
-    - Authorization
-    - Content-Type
-
----
-apiVersion: configuration.konghq.com/v1
-kind: KongConsumer
-metadata:
-  name: api-consumer
-username: default
-
----
-apiVersion: configuration.konghq.com/v1
-kind: KongService
-metadata:
-  name: integratedapi-service
-spec:
-  protocol: http
-  host: integratedapi
-  port: 8080
-  path: /
-  retries: 3
-  connect_timeout: 6000
-  read_timeout: 6000
-  write_timeout: 6000
-
----
-apiVersion: configuration.konghq.com/v1
-kind: KongRoute
-metadata:
-  name: integratedapi-route
-spec:
-  protocols:
-    - http
-    - https
-  paths:
-    - /integratedapi
-  methods:
-    - GET
-    - POST
-    - PUT
-    - DELETE
-  strip_path: true
-  service:
-    name: integratedapi-service
+      protocol: TCP
+      name: http
