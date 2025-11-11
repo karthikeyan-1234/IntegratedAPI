@@ -1,168 +1,119 @@
 apiVersion: v1
-kind: PersistentVolume
+kind: ConfigMap
 metadata:
-  name: kong-postgres-pv
-spec:
-  capacity:
-    storage: 5Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "/data/kong-postgres"
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: kong-postgres-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
-  storageClassName: ""
-  volumeName: kong-postgres-pv
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: kong-database
-spec:
-  selector:
-    app: kong-database
-  ports:
-    - name: postgres
-      protocol: TCP
-      port: 5432
-      targetPort: 5432
-  type: ClusterIP
+  name: integratedapi-config
+data:
+  SERVICE_URL: "http://integratedapi:8080"
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kong-database
+  name: integratedapi
+  labels:
+    app: integratedapi
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kong-database
+      app: integratedapi
   template:
     metadata:
       labels:
-        app: kong-database
+        app: integratedapi
     spec:
       containers:
-        - name: kong-database
-          image: postgres:15
-          env:
-            - name: POSTGRES_DB
-              value: kong
-            - name: POSTGRES_USER
-              value: kong
-            - name: POSTGRES_PASSWORD
-              value: kongpass
+        - name: integratedapi
+          image: karthiknat/integratedapi:28
           ports:
-            - containerPort: 5432
-          volumeMounts:
-            - name: kong-postgres-storage
-              mountPath: /var/lib/postgresql/data
-      volumes:
-        - name: kong-postgres-storage
-          persistentVolumeClaim:
-            claimName: kong-postgres-pvc
-
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: kong-bootstrap
-spec:
-  template:
-    spec:
-      restartPolicy: OnFailure
-      containers:
-        - name: kong-bootstrap
-          image: kong:3.4
+            - containerPort: 8080
           env:
-            - name: KONG_DATABASE
-              value: postgres
-            - name: KONG_PG_HOST
-              value: kong-database
-            - name: KONG_PG_USER
-              value: kong
-            - name: KONG_PG_PASSWORD
-              value: kongpass
-          command: ["kong", "migrations", "bootstrap"]
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: kong
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: kong
-  template:
-    metadata:
-      labels:
-        app: kong
-    spec:
-      containers:
-        - name: kong
-          image: kong:3.4
-          env:
-            - name: KONG_DATABASE
-              value: postgres
-            - name: KONG_PG_HOST
-              value: kong-database
-            - name: KONG_PG_USER
-              value: kong
-            - name: KONG_PG_PASSWORD
-              value: kongpass
-            - name: KONG_PROXY_ACCESS_LOG
-              value: /dev/stdout
-            - name: KONG_ADMIN_ACCESS_LOG
-              value: /dev/stdout
-            - name: KONG_PROXY_ERROR_LOG
-              value: /dev/stderr
-            - name: KONG_ADMIN_ERROR_LOG
-              value: /dev/stderr
-            - name: KONG_ADMIN_LISTEN
-              value: "0.0.0.0:8001"
-          ports:
-            - containerPort: 8000
-            - containerPort: 8001
+            - name: ASPNETCORE_URLS
+              value: "http://+:8080"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: kong-admin
+  name: integratedapi
 spec:
   selector:
-    app: kong
+    app: integratedapi
   ports:
-    - name: admin
-      port: 8001
-      targetPort: 8001
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
   type: ClusterIP
 
 ---
-apiVersion: v1
-kind: Service
+# Kong Service
+apiVersion: configuration.konghq.com/v1
+kind: KongIngress
 metadata:
-  name: kong-proxy
+  name: integratedapi-ingress
+route:
+  methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: cors-plugin
+plugin: cors
+config:
+  origins:
+    - "*"
+  methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+  headers:
+    - Accept
+    - Authorization
+    - Content-Type
+
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongConsumer
+metadata:
+  name: api-consumer
+username: default
+
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongService
+metadata:
+  name: integratedapi-service
 spec:
-  selector:
-    app: kong
-  ports:
-    - name: proxy
-      port: 80
-      targetPort: 8000
-      # 👇 Let Kubernetes assign an available NodePort dynamically
-      nodePort: null
-  type: NodePort
+  protocol: http
+  host: integratedapi
+  port: 8080
+  path: /
+  retries: 3
+  connect_timeout: 6000
+  read_timeout: 6000
+  write_timeout: 6000
+
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongRoute
+metadata:
+  name: integratedapi-route
+spec:
+  protocols:
+    - http
+    - https
+  paths:
+    - /integratedapi
+  methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+  strip_path: true
+  service:
+    name: integratedapi-service
