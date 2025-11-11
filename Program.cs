@@ -1,4 +1,4 @@
-using IntegratedAPI.Contexts;
+﻿using IntegratedAPI.Contexts;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -33,6 +33,21 @@ builder.Services.AddCors(builder =>
 //swagger
 
 var app = builder.Build();
+
+// ✅ ADD THIS: Create database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ProjectDbContext>();
+    try
+    {
+        db.Database.EnsureCreated(); // or db.Database.Migrate() if you have migrations
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred creating the DB.");
+    }
+}
 
 // Configure the HTTP request pipeline.
 //if (app.Environment.IsDevelopment())

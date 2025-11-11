@@ -26,7 +26,7 @@ spec:
 
             # Connection string matches your SQL Server service definition
             - name: ConnectionStrings__DefaultConnection
-              value: "Server=sqlserver-service,1433;Database=IntegratedDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+              value: "Server=sqlserver-service,1433;Database=ProjectDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
 
           readinessProbe:
             httpGet:
