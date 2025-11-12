@@ -50,12 +50,16 @@ pipeline {
             steps {
                 echo 'Building Docker image...'
                 script {
+                    // Build for local use - no push needed for local Kubernetes
                     bat "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} -t ${DOCKER_IMAGE}:latest ."
                 }
             }
         }
         
         stage('Push to Docker Hub') {
+            when {
+                expression { return false } // Disabled for local development
+            }
             steps {
                 echo 'Pushing Docker image to Docker Hub...'
                 script {
@@ -72,36 +76,36 @@ pipeline {
             steps {
                 echo 'Deploying IntegratedAPI and SQL Server to Kubernetes...'
                 script {
-                    withCredentials([file(credentialsId: 'kube-config', variable: 'KUBECONFIG_FILE')]) {
-                        // Set KUBECONFIG environment variable to point to the credential file
-                        bat """
-                            set KUBECONFIG=%KUBECONFIG_FILE%
-                            kubectl apply -f sqlserver-deploy.yml
-                        """
-                        
-                        // Deploy the Integrated API
-                        bat """
-                            set KUBECONFIG=%KUBECONFIG_FILE%
-                            kubectl apply -f integratedapi-deploy.yml
-                        """
-                        
-                        // Restart & verify rollout for IntegratedAPI
-                        bat """
-                            set KUBECONFIG=%KUBECONFIG_FILE%
-                            kubectl rollout restart deployment/integratedapi-deployment
-                        """
-                        
-                        bat """
-                            set KUBECONFIG=%KUBECONFIG_FILE%
-                            kubectl rollout status deployment/integratedapi-deployment
-                        """
-                        
-                        // Check SQL Server deployment status
-                        bat """
-                            set KUBECONFIG=%KUBECONFIG_FILE%
-                            kubectl rollout status deployment/sqlserver-deployment --timeout=60s || echo SQL Server still starting up...
-                        """
-                    }
+                    // Copy current kubeconfig to workspace before deploying
+                    bat """
+                        copy /Y "%USERPROFILE%\\.kube\\config" "%WORKSPACE%\\kubeconfig"
+                        set KUBECONFIG=%WORKSPACE%\\kubeconfig
+                        kubectl apply -f sqlserver-deploy.yml
+                    """
+                    
+                    // Deploy the Integrated API
+                    bat """
+                        set KUBECONFIG=%WORKSPACE%\\kubeconfig
+                        kubectl apply -f integratedapi-deploy.yml
+                    """
+                    
+                    // Restart & verify rollout for IntegratedAPI
+                    bat """
+                        set KUBECONFIG=%WORKSPACE%\\kubeconfig
+                        kubectl rollout restart deployment/integratedapi-deployment
+                    """
+                    
+                    bat """
+                        set KUBECONFIG=%WORKSPACE%\\kubeconfig
+                        kubectl rollout status deployment/integratedapi-deployment
+                    """
+                    
+                    // Check SQL Server deployment status (non-blocking)
+                    bat """
+                        set KUBECONFIG=%WORKSPACE%\\kubeconfig
+                        kubectl get pods -l app=sqlserver
+                        echo Note: SQL Server may take 2-3 minutes to fully start. Check status with: kubectl get pods
+                    """
                 }
             }
         }

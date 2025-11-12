@@ -5,7 +5,7 @@ metadata:
   labels:
     app: sqlserver
 spec:
-  replicas: 3
+  replicas: 1  # Changed from 3 to 1 - SQL Server should be single instance
   selector:
     matchLabels:
       app: sqlserver
