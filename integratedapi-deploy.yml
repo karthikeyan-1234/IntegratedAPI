@@ -17,7 +17,7 @@ spec:
       containers:
         - name: integratedapi
           image: karthiknat/integratedapi:latest
-          imagePullPolicy: Always
+          imagePullPolicy: Never  # Use local image, don't pull from Docker Hub
           ports:
             - containerPort: 7080
           env:
@@ -30,17 +30,19 @@ spec:
 
           readinessProbe:
             httpGet:
-              path: /health
+              path: /
               port: 7080
             initialDelaySeconds: 10
             periodSeconds: 10
+            failureThreshold: 3
 
           livenessProbe:
             httpGet:
-              path: /health
+              path: /
               port: 7080
             initialDelaySeconds: 30
             periodSeconds: 20
+            failureThreshold: 3
 
       restartPolicy: Always
 ---
@@ -51,11 +53,11 @@ metadata:
   labels:
     app: integratedapi
 spec:
-  type: NodePort
+  type: LoadBalancer  # Changed from NodePort to LoadBalancer
   selector:
     app: integratedapi
   ports:
     - protocol: TCP
       port: 7080
       targetPort: 7080
-      nodePort: 30080
+      # LoadBalancer will automatically expose on localhost:7080
