@@ -72,19 +72,35 @@ pipeline {
             steps {
                 echo 'Deploying IntegratedAPI and SQL Server to Kubernetes...'
                 script {
-                    withCredentials([file(credentialsId: 'kube-config', variable: 'KUBECONFIG')]) {
-                        // Deploy SQL Server if not already present
-                        bat "kubectl apply -f sqlserver-deploy.yml --kubeconfig=%KUBECONFIG%"
+                    withCredentials([file(credentialsId: 'kube-config', variable: 'KUBECONFIG_FILE')]) {
+                        // Set KUBECONFIG environment variable to point to the credential file
+                        bat """
+                            set KUBECONFIG=%KUBECONFIG_FILE%
+                            kubectl apply -f sqlserver-deploy.yml
+                        """
                         
                         // Deploy the Integrated API
-                        bat "kubectl apply -f integratedapi-deploy.yml --kubeconfig=%KUBECONFIG%"
+                        bat """
+                            set KUBECONFIG=%KUBECONFIG_FILE%
+                            kubectl apply -f integratedapi-deploy.yml
+                        """
                         
                         // Restart & verify rollout for IntegratedAPI
-                        bat "kubectl rollout restart deployment/integratedapi-deployment --kubeconfig=%KUBECONFIG%"
-                        bat "kubectl rollout status deployment/integratedapi-deployment --kubeconfig=%KUBECONFIG%"
+                        bat """
+                            set KUBECONFIG=%KUBECONFIG_FILE%
+                            kubectl rollout restart deployment/integratedapi-deployment
+                        """
+                        
+                        bat """
+                            set KUBECONFIG=%KUBECONFIG_FILE%
+                            kubectl rollout status deployment/integratedapi-deployment
+                        """
                         
                         // Check SQL Server deployment status
-                        bat "kubectl rollout status deployment/sqlserver-deployment --kubeconfig=%KUBECONFIG% --timeout=60s || echo 'SQL Server still starting up...'"
+                        bat """
+                            set KUBECONFIG=%KUBECONFIG_FILE%
+                            kubectl rollout status deployment/sqlserver-deployment --timeout=60s || echo SQL Server still starting up...
+                        """
                     }
                 }
             }
