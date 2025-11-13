@@ -17,7 +17,7 @@ spec:
       containers:
         - name: integratedapi
           image: karthiknat/integratedapi:latest
-          imagePullPolicy: Never  # Use local image, don't pull from Docker Hub
+          imagePullPolicy: IfNotPresent  # Use local image, don't pull from Docker Hub
           ports:
             - containerPort: 7080
           env:
@@ -30,7 +30,7 @@ spec:
 
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 7080
             initialDelaySeconds: 10
             periodSeconds: 10
@@ -38,7 +38,7 @@ spec:
 
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 7080
             initialDelaySeconds: 30
             periodSeconds: 20

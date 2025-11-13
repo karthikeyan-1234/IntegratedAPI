@@ -1,0 +1,238 @@
+# Lightweight Kong setup for limited resources
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kong
+---
+# PostgreSQL PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: kong
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+# PostgreSQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: kong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_USER
+          value: "kong"
+        - name: POSTGRES_PASSWORD
+          value: "kong123"
+        - name: POSTGRES_DB
+          value: "kong"
+        - name: PGDATA
+          value: "/var/lib/postgresql/data/pgdata"
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: kong
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+---
+# Kong Migration Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kong-migration-job
+  namespace: kong
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:15-alpine
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until pg_isready -h postgres -U kong; do sleep 2; done']
+      containers:
+      - name: kong-migration
+        image: kong:3.8
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: KONG_DATABASE
+          value: "postgres"
+        - name: KONG_PG_HOST
+          value: "postgres"
+        - name: KONG_PG_USER
+          value: "kong"
+        - name: KONG_PG_PASSWORD
+          value: "kong123"
+        - name: KONG_PG_DATABASE
+          value: "kong"
+        command: ["kong", "migrations", "bootstrap"]
+        resources:
+          limits:
+            memory: "512Mi"
+  backoffLimit: 3
+---
+# Kong Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong
+  namespace: kong
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kong
+  template:
+    metadata:
+      labels:
+        app: kong
+    spec:
+      initContainers:
+      - name: wait-for-migrations
+        image: busybox:1.36
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'echo "Waiting 60s for migrations..." && sleep 60']
+      containers:
+      - name: kong
+        image: kong:3.8
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: KONG_DATABASE
+          value: "postgres"
+        - name: KONG_PG_HOST
+          value: "postgres"
+        - name: KONG_PG_USER
+          value: "kong"
+        - name: KONG_PG_PASSWORD
+          value: "kong123"
+        - name: KONG_PG_DATABASE
+          value: "kong"
+        - name: KONG_PROXY_LISTEN
+          value: "0.0.0.0:8000"
+        - name: KONG_ADMIN_LISTEN
+          value: "0.0.0.0:8001"
+        - name: KONG_ADMIN_GUI_LISTEN
+          value: "0.0.0.0:8002"
+        - name: KONG_ADMIN_GUI_URL
+          value: "http://localhost:8002"
+        - name: KONG_PROXY_ACCESS_LOG
+          value: "/dev/stdout"
+        - name: KONG_ADMIN_ACCESS_LOG
+          value: "/dev/stdout"
+        - name: KONG_PROXY_ERROR_LOG
+          value: "/dev/stderr"
+        - name: KONG_ADMIN_ERROR_LOG
+          value: "/dev/stderr"
+        # Reduce Kong memory usage
+        - name: KONG_MEM_CACHE_SIZE
+          value: "64m"
+        - name: KONG_NGINX_WORKER_PROCESSES
+          value: "1"
+        ports:
+        - containerPort: 8000
+        - containerPort: 8001
+        - containerPort: 8002
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1536Mi"  # 1.5GB - between 1GB and 2GB
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: 8001
+          initialDelaySeconds: 120
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: 8001
+          initialDelaySeconds: 60
+          periodSeconds: 5
+---
+# Services
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-proxy
+  namespace: kong
+spec:
+  type: LoadBalancer
+  selector:
+    app: kong
+  ports:
+  - name: proxy
+    port: 8000
+    targetPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-admin
+  namespace: kong
+spec:
+  type: LoadBalancer
+  selector:
+    app: kong
+  ports:
+  - name: admin
+    port: 8001
+    targetPort: 8001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-manager
+  namespace: kong
+spec:
+  type: LoadBalancer
+  selector:
+    app: kong
+  ports:
+  - name: manager
+    port: 8002
+    targetPort: 8002
