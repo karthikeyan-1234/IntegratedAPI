@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CI/CD Setup Guide - .NET 8 Web API with Jenkins, Kubernetes & SQL Server</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        header {
+            border-bottom: 4px solid #0066cc;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #0066cc;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+        
+        .meta-info {
+            display: flex;
+            gap: 30px;
+            color: #666;
+            font-size: 0.9em;
+            flex-wrap: wrap;
+        }
+        
+        .meta-info span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        h2 {
+            color: #0066cc;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        h3 {
+            color: #333;
+            font-size: 1.4em;
+            margin-top: 25px;
+            margin-bottom: 12px;
+        }
+        
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+        }
+        
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        
+        pre {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+        
+        .info-box {
+            background-color: #e7f3ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .command-box {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .command-box strong {
+            display: block;
+            margin-bottom: 10px;
+            color: #0066cc;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+        
+        th {
+            background-color: #0066cc;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .checklist {
+            list-style: none;
+            margin-left: 0;
+        }
+        
+        .checklist li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .architecture-diagram {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .toc {
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 5px;
+            margin: 30px 0;
+        }
+        
+        .toc h2 {
+            margin-top: 0;
+        }
+        
+        .toc ul {
+            margin-left: 20px;
+        }
+        
+        .toc a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        .file-path {
+            background-color: #fff8e1;
+            padding: 8px 12px;
+            border-left: 3px solid #ffc107;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+            
+            pre {
+                page-break-inside: avoid;
+            }
+            
+            h2 {
+                page-break-after: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Complete CI/CD Setup Guide</h1>
+            <p class="subtitle">.NET 8 Web API with Jenkins, Docker Desktop Kubernetes, SQL Server</p>
+            <div class="meta-info">
+                <span><strong>Author:</strong> CI/CD Implementation Guide</span>
+                <span><strong>Date:</strong> October 12, 2025</span>
+                <span><strong>Version:</strong> 2.0</span>
+            </div>
+        </header>
+
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <ol>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#prerequisites">Prerequisites</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#section1">Section 1: Enable Kubernetes in Docker Desktop</a></li>
+                <li><a href="#section2">Section 2: Deploy SQL Server to Kubernetes</a></li>
+                <li><a href="#section3">Section 3: Prepare Your .NET 8 Web API Project</a></li>
+                <li><a href="#section4">Section 4: Add Database Integration to API</a></li>
+                <li><a href="#section5">Section 5: Push Your Code to GitHub</a></li>
+                <li><a href="#section6">Section 6: Configure Jenkins</a></li>
+                <li><a href="#section7">Section 7: Create Jenkins Pipeline Job</a></li>
+                <li><a href="#section8">Section 8: Deploy Kubernetes Dashboard (Optional)</a></li>
+                <li><a href="#section9">Section 9: Accessing Your Services</a></li>
+                <li><a href="#troubleshooting">Troubleshooting Guide</a></li>
+                <li><a href="#appendix">Appendix: Configuration Files</a></li>
+            </ol>
+        </div>
+
+        <section id="overview">
+            <h2>Overview</h2>
+            <p>This guide provides step-by-step instructions to set up a complete CI/CD pipeline for deploying an ASP.NET Core Web API (.NET 8) with SQL Server using Jenkins, Docker, and Kubernetes on your local Windows development machine.</p>
+            
+            <h3>What You'll Build</h3>
+            <ul>
+                <li><strong>Source Control:</strong> GitHub repository</li>
+                <li><strong>CI/CD Tool:</strong> Jenkins for automated build and deployment</li>
+                <li><strong>Containerization:</strong> Docker for creating container images</li>
+                <li><strong>Orchestration:</strong> Docker Desktop Kubernetes</li>
+                <li><strong>Database:</strong> SQL Server in Kubernetes with sample data</li>
+                <li><strong>Registry:</strong> Docker Hub for storing container images</li>
+                <li><strong>Monitoring:</strong> Kubernetes Dashboard (optional)</li>
+            </ul>
+
+            <h3>Complete Workflow</h3>
+            <ol>
+                <li>Developer pushes code to GitHub</li>
+                <li>Jenkins detects changes (SCM polling every minute)</li>
+                <li>Jenkins builds the .NET 8 project</li>
+                <li>Jenkins creates Docker image</li>
+                <li>Docker image is pushed to Docker Hub</li>
+                <li>Kubernetes deploys the updated application</li>
+                <li>API connects to SQL Server in Kubernetes</li>
+                <li>Application accessible at http://localhost:7080</li>
+            </ol>
+        </section>
+
+        <section id="prerequisites">
+            <h2>Prerequisites</h2>
+            
+            <h3>Software Requirements</h3>
+            <ul>
+                <li><strong>Windows 10/11</strong> - Operating System</li>
+                <li><strong>Docker Desktop</strong> - Installed and running</li>
+                <li><strong>Jenkins</strong> - Installed and running at http://localhost:8080</li>
+                <li><strong>Git</strong> - Installed for version control</li>
+                <li><strong>.NET 8 SDK</strong> - For building the application</li>
+                <li><strong>Visual Studio</strong> or <strong>VS Code</strong> - For code editing</li>
+                <li><strong>SQL Server Management Studio (SSMS)</strong> - Optional, for database management</li>
+            </ul>
+
+            <h3>Accounts Required</h3>
+            <ul>
+                <li><strong>GitHub Account</strong> - For source code repository</li>
+                <li><strong>Docker Hub Account</strong> - For storing Docker images</li>
+            </ul>
+
+            <h3>Project Information</h3>
+            <ul>
+                <li><strong>Local Repository:</strong> <code>C:\Users\mail2\source\repos\SomeRubbishAPI</code></li>
+                <li><strong>GitHub Repository:</strong> https://github.com/karthikeyan-1234/SomeRubbishAPI</li>
+                <li><strong>Jenkins URL:</strong> http://localhost:8080</li>
+                <li><strong>Docker Hub Username:</strong> karthiknat</li>
+            </ul>
+        </section>
+
+        <section id="architecture">
+            <h2>Architecture</h2>
+            <div class="architecture-diagram">
+                <pre style="text-align: left;">
+┌─────────────┐      ┌──────────────┐      ┌─────────────┐
+│   GitHub    │─────▶│   Jenkins    │─────▶│ Docker Hub  │
+│ Repository  │      │   Pipeline   │      │  Registry   │
+└─────────────┘      └──────────────┘      └─────────────┘
+                            │                      │
+                            │                      │
+                            ▼                      ▼
+                     ┌──────────────────────────────────┐
+                     │  Docker Desktop Kubernetes       │
+                     │  ┌────────────────────────────┐  │
+                     │  │  API Pod (Port: 7080)      │  │
+                     │  │  ├─ Connects to ──┐        │  │
+                     │  │                   ▼        │  │
+                     │  │  SQL Server Pod (1433)     │  │
+                     │  │  └─ Persistent Storage     │  │
+                     │  └────────────────────────────┘  │
+                     └──────────────────────────────────┘
+                                  │
+                                  ▼
+                    http://localhost:7080 (API)
+                    localhost:1433 (SQL Server)
+                </pre>
+            </div>
+        </section>
+
+        <section id="section1">
+            <h2>Section 1: Enable Kubernetes in Docker Desktop</h2>
+
+            <ol>
+                <li>Open <strong>Docker Desktop</strong></li>
+                <li>Click <strong>Settings</strong> (gear icon)</li>
+                <li>Navigate to <strong>Kubernetes</strong> in left sidebar</li>
+                <li>Check ☑ <strong>Enable Kubernetes</strong></li>
+                <li>Click <strong>Apply & Restart</strong></li>
+                <li>Wait for Kubernetes icon to turn green (2-5 minutes)</li>
+            </ol>
+
+            <div class="command-box">
+                <strong>Verify Installation:</strong>
+                <pre><code>kubectl get nodes</code></pre>
+            </div>
+
+            <div class="success-box">
+                <strong>Expected Output:</strong>
+                <pre><code>NAME             STATUS   ROLES           AGE   VERSION
+docker-desktop   Ready    control-plane   5m    v1.29.x</code></pre>
+            </div>
+        </section>
+
+        <section id="section2">
+            <h2>Section 2: Deploy SQL Server to Kubernetes</h2>
+
+            <h3>2.1: Create SQL Server Deployment File</h3>
+            
+            <div class="file-path">
+                <strong>Create File:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\sqlserver-deploy.yml
+            </div>
+
+            <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqlserver-deployment
+  labels:
+    app: sqlserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sqlserver
+  template:
+    metadata:
+      labels:
+        app: sqlserver
+    spec:
+      containers:
+      - name: sqlserver
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        ports:
+        - containerPort: 1433
+        env:
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: MSSQL_SA_PASSWORD
+          value: "YourStrong@Passw0rd"
+        - name: MSSQL_PID
+          value: "Developer"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: sqlserver-storage
+          mountPath: /var/opt/mssql
+      volumes:
+      - name: sqlserver-storage
+        persistentVolumeClaim:
+          claimName: sqlserver-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sqlserver-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlserver-service
+  labels:
+    app: sqlserver
+spec:
+  type: LoadBalancer
+  selector:
+    app: sqlserver
+  ports:
+  - protocol: TCP
+    port: 1433
+    targetPort: 1433
+    name: mssql</code></pre>
+
+            <h3>2.2: Deploy SQL Server</h3>
+            
+            <div class="command-box">
+                <strong>Apply Configuration:</strong>
+                <pre><code>kubectl apply -f C:\Users\mail2\source\repos\SomeRubbishAPI\sqlserver-deploy.yml</code></pre>
+            </div>
+
+            <div class="command-box">
+                <strong>Verify Deployment (wait for Running status):</strong>
+                <pre><code>kubectl get pods -l app=sqlserver -w</code></pre>
+                <p>Press Ctrl+C once pod shows Running status</p>
+            </div>
+
+            <h3>2.3: Create Database Initialization Job</h3>
+
+            <div class="file-path">
+                <strong>Create File:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\sqlserver-init-job.yml
+            </div>
+
+            <pre><code>apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sqlserver-init-job
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: sqlserver-init
+        image: mcr.microsoft.com/mssql-tools
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Waiting for SQL Server to start..."
+          sleep 30
+          
+          /opt/mssql-tools/bin/sqlcmd -S sqlserver-service -U sa -P 'YourStrong@Passw0rd' -Q "
+          IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'SampleDB')
+          BEGIN
+            CREATE DATABASE SampleDB;
+          END
+          "
+          
+          /opt/mssql-tools/bin/sqlcmd -S sqlserver-service -U sa -P 'YourStrong@Passw0rd' -d SampleDB -Q "
+          IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Products')
+          BEGIN
+            CREATE TABLE Products (
+              Id INT PRIMARY KEY IDENTITY(1,1),
+              Name NVARCHAR(100) NOT NULL,
+              Price DECIMAL(18,2) NOT NULL,
+              Description NVARCHAR(500)
+            );
+            
+            INSERT INTO Products (Name, Price, Description) VALUES 
+            ('Laptop', 999.99, 'High-performance laptop'),
+            ('Mouse', 29.99, 'Wireless mouse'),
+            ('Keyboard', 79.99, 'Mechanical keyboard'),
+            ('Monitor', 299.99, '27-inch 4K monitor'),
+            ('Headphones', 149.99, 'Noise-cancelling headphones');
+          END
+          "
+          
+          echo "Database initialization completed!"</code></pre>
+
+            <h3>2.4: Initialize Database</h3>
+
+            <div class="command-box">
+                <strong>Run Initialization Job:</strong>
+                <pre><code>kubectl apply -f C:\Users\mail2\source\repos\SomeRubbishAPI\sqlserver-init-job.yml</code></pre>
+            </div>
+
+            <div class="command-box">
+                <strong>Verify Initialization (wait ~60 seconds):</strong>
+                <pre><code>kubectl logs job/sqlserver-init-job</code></pre>
+                <p>Should show "Database initialization completed!"</p>
+            </div>
+
+            <div class="info-box">
+                <h4>SQL Server Access Information:</h4>
+                <ul>
+                    <li><strong>From API (inside Kubernetes):</strong> <code>sqlserver-service,1433</code></li>
+                    <li><strong>From SSMS (your Windows):</strong> <code>localhost,1433</code></li>
+                    <li><strong>Login:</strong> sa</li>
+                    <li><strong>Password:</strong> YourStrong@Passw0rd</li>
+                    <li><strong>Database:</strong> SampleDB</li>
+                    <li><strong>Table:</strong> Products (with 5 sample records)</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="section3">
+            <h2>Section 3: Prepare Your .NET 8 Web API Project</h2>
+
+            <h3>3.1: Disable HTTPS Redirection</h3>
+            
+            <div class="file-path">
+                <strong>Edit File:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\SomeRubbishAPI\Program.cs
+            </div>
+
+            <p><strong>Comment out this line:</strong></p>
+            <pre><code>// app.UseHttpsRedirection();</code></pre>
+
+            <h3>3.2: Delete launchSettings.json (Optional)</h3>
+            
+            <div class="file-path">
+                <strong>Delete File:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\SomeRubbishAPI\Properties\launchSettings.json
+            </div>
+
+            <h3>3.3: Update Dockerfile</h3>
+
+            <div class="file-path">
+                <strong>Location:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\SomeRubbishAPI\Dockerfile
+            </div>
+
+            <pre><code>FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+USER $APP_UID
+WORKDIR /app
+EXPOSE 7080
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY ["SomeRubbishAPI.csproj", "SomeRubbishAPI/"]
+RUN dotnet restore "./SomeRubbishAPI/SomeRubbishAPI.csproj"
+COPY . ./SomeRubbishAPI/
+WORKDIR "/src/SomeRubbishAPI"
+RUN dotnet build "./SomeRubbishAPI.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "./SomeRubbishAPI.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "SomeRubbishAPI.dll"]</code></pre>
+
+            <h3>3.4: Update backend-deploy.yml</h3>
+
+            <div class="file-path">
+                <strong>Location:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\backend-deploy.yml
+            </div>
+
+            <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somerubbishapi-deployment
+  labels:
+    app: somerubbishapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somerubbishapi
+  template:
+    metadata:
+      labels:
+        app: somerubbishapi
+    spec:
+      containers:
+      - name: somerubbishapi
+        image: karthiknat/somerubbishapi:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 7080
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        env:
+          - name: ASPNETCORE_URLS
+            value: "http://+:7080"
+          - name: ASPNETCORE_ENVIRONMENT
+            value: Production
+          - name: ConnectionStrings__DefaultConnection
+            value: "Server=sqlserver-service,1433;Database=SampleDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somerubbishapi-service
+  labels:
+    app: somerubbishapi
+spec:
+  selector:
+    app: somerubbishapi
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 7080
+      targetPort: 7080
+      name: http</code></pre>
+
+            <div class="warning-box">
+                <strong>Note:</strong> The connection string uses <code>sqlserver-service</code> (Kubernetes service name) for pod-to-pod communication.
+            </div>
+        </section>
+
+        <section id="section4">
+            <h2>Section 4: Add Database Integration to API</h2>
+
+            <h3>4.1: Add NuGet Packages</h3>
+
+            <div class="command-box">
+                <strong>Navigate to Project and Install Packages:</strong>
+                <pre><code>cd C:\Users\mail2\source\repos\SomeRubbishAPI\SomeRubbishAPI
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add package Microsoft.EntityFrameworkCore.Design</code></pre>
+            </div>
+
+            <h3>4.2: Create Product Model</h3>
+
+            <div class="file-path">
+                <strong>Create File:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\SomeRubbishAPI\Models\Product.cs
+            </div>
+
+            <pre><code>namespace SomeRubbishAPI.Models
+{
+    public class Product
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public string? Description { get; set; }
+    }
+}</code></pre>
+
+            <h3>4.3: Create DbContext</h3>
+
+            <div class="file-path">
+                <strong>Create File:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\SomeRubbishAPI\Data\ApplicationDbContext.cs
+            </div>
+
+            <pre><code>using Microsoft.EntityFrameworkCore;
+using SomeRubbishAPI.Models;
+
+namespace SomeRubbishAPI.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions&lt;ApplicationDbContext&gt; options)
+            : base(options)
+        {
+        }
+
+        public DbSet&lt;Product&gt; Products { get; set; }
+    }
+}</code></pre>
+
+            <h3>4.4: Update Program.cs</h3>
+
+            <div class="file-path">
+                <strong>Edit File:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\SomeRubbishAPI\Program.cs
+            </div>
+
+            <p><strong>Add these using statements at the top:</strong></p>
+            <pre><code>using Microsoft.EntityFrameworkCore;
+using SomeRubbishAPI.Data;</code></pre>
+
+            <p><strong>Add DbContext registration after builder.Services.AddControllers():</strong></p>
+            <pre><code>builder.Services.AddDbContext&lt;ApplicationDbContext&gt;(options =&gt;
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));</code></pre>
+
+            <h3>4.5: Update appsettings.json</h3>
+
+            <div class="file-path">
+                <strong>Edit File:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\SomeRubbishAPI\appsettings.json
+            </div>
+
+            <p><strong>Add ConnectionStrings section:</strong></p>
+            <pre><code>{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost,1433;Database=SampleDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+  }
+}</code></pre>
+
+            <div class="info-box">
+                <strong>Connection String Note:</strong>
+                <ul>
+                    <li><strong>appsettings.json:</strong> Uses <code>localhost</code> for local debugging</li>
+                    <li><strong>backend-deploy.yml env variable:</strong> Uses <code>sqlserver-service</code> for Kubernetes deployment</li>
+                    <li>Environment variables automatically override appsettings.json</li>
+                </ul>
+            </div>
+
+            <h3>4.6: Create Products Controller</h3>
+
+            <div class="file-path">
+                <strong>Create File:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\SomeRubbishAPI\Controllers\ProductsController.cs
+            </div>
+
+            <pre><code>using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using SomeRubbishAPI.Data;
+using SomeRubbishAPI.Models;
+
+namespace SomeRubbishAPI.Controllers
+{
+    [ApiController]
+    [Route("[controller]")]
+    public class ProductsController : ControllerBase
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly ILogger&lt;ProductsController&gt; _logger;
+
+        public ProductsController(ApplicationDbContext context, ILogger&lt;ProductsController&gt; logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        [HttpGet]
+        public async Task&lt;ActionResult&lt;IEnumerable&lt;Product&gt;&gt;&gt; GetProducts()
+        {
+            try
+            {
+                var products = await _context.Products.ToListAsync();
+                return Ok(products);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching products");
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        [HttpGet("{id}")]
+        public async Task&lt;ActionResult&lt;Product&gt;&gt; GetProduct(int id)
+        {
+            var product = await _context.Products.FindAsync(id);
+
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(product);
+        }
+    }
+}</code></pre>
+
+            <h3>4.7: Directory Structure Verification</h3>
+
+            <pre><code>C:\Users\mail2\source\repos\SomeRubbishAPI\
+├── Jenkinsfile
+├── backend-deploy.yml
+├── sqlserver-deploy.yml
+├── sqlserver-init-job.yml
+├── SomeRubbishAPI\
+│   ├── Dockerfile
+│   ├── SomeRubbishAPI.csproj
+│   ├── Program.cs
+│   ├── appsettings.json
+│   ├── Controllers\
+│   │   ├── WeatherForecastController.cs
+│   │   └── ProductsController.cs
+│   ├── Models\
+│   │   └── Product.cs
+│   ├── Data\
+│   │   └── ApplicationDbContext.cs
+│   └── Properties\
+└── .git\</code></pre>
+        </section>
+
+        <section id="section5">
+            <h2>Section 5: Push Your Code to GitHub</h2>
+
+            <h3>5.1: Initialize Git Repository (If Not Already Done)</h3>
+            
+            <div class="command-box">
+                <strong>Commands:</strong>
+                <pre><code>cd C:\Users\mail2\source\repos\SomeRubbishAPI
+git init
+git config user.name "Your Name"
+git config user.email "your.email@example.com"</code></pre>
+            </div>
+
+            <h3>5.2: Add and Commit Files</h3>
+
+            <pre><code>git add .
+git commit -m "Add SQL Server integration with Products endpoint"</code></pre>
+
+            <h3>5.3: Connect to GitHub and Push</h3>
+
+            <pre><code>git remote add origin https://github.com/karthikeyan-1234/SomeRubbishAPI.git
+git branch -M main
+git push -u origin main</code></pre>
+
+            <div class="success-box">
+                <strong>Verification:</strong> Visit https://github.com/karthikeyan-1234/SomeRubbishAPI to verify all files are uploaded.
+            </div>
+        </section>
+
+        <section id="section6">
+            <h2>Section 6: Configure Jenkins</h2>
+
+            <h3>6.1: Install Required Jenkins Plugins</h3>
+
+            <ol>
+                <li>Open Jenkins: http://localhost:8080</li>
+                <li>Go to <strong>Manage Jenkins</strong> → <strong>Plugins</strong> → <strong>Available plugins</strong></li>
+                <li>Install these plugins:
+                    <ul>
+                        <li>Docker Pipeline</li>
+                        <li>Kubernetes CLI Plugin</li>
+                        <li>Git Plugin</li>
+                    </ul>
+                </li>
+                <li>Check ☑ <strong>Restart Jenkins when installation is complete</strong></li>
+            </ol>
+
+            <h3>6.2: Verify Docker Access</h3>
+
+            <ol>
+                <li>Go to <strong>Manage Jenkins</strong> → <strong>Script Console</strong></li>
+                <li>Run this test:
+                    <pre><code>def proc = "docker --version".execute()
+proc.waitFor()
+println proc.text</code></pre>
+                </li>
+                <li>Click <strong>Run</strong></li>
+                <li>Verify output shows Docker version (e.g., <code>Docker version 28.4.0</code>)</li>
+            </ol>
+
+            <h3>6.3: Add Kubeconfig Credential</h3>
+
+            <ol>
+                <li>Go to <strong>Manage Jenkins</strong> → <strong>Credentials</strong> → <strong>System</strong> → <strong>Global credentials</strong></li>
+                <li>Click <strong>Add Credentials</strong></li>
+                <li>Configure:
+                    <ul>
+                        <li><strong>Kind:</strong> Secret file</li>
+                        <li><strong>File:</strong> <code>C:\Users\mail2\.kube\config</code></li>
+                        <li><strong>ID:</strong> <code>kube-config</code></li>
+                        <li><strong>Description:</strong> Docker Desktop Kubernetes Config</li>
+                    </ul>
+                </li>
+                <li>Click <strong>Create</strong></li>
+            </ol>
+
+            <h3>6.4: Add Docker Hub Credential</h3>
+
+            <ol>
+                <li>Go to <strong>Manage Jenkins</strong> → <strong>Credentials</strong> → <strong>System</strong> → <strong>Global credentials</strong></li>
+                <li>Click <strong>Add Credentials</strong></li>
+                <li>Configure:
+                    <ul>
+                        <li><strong>Kind:</strong> Username with password</li>
+                        <li><strong>Username:</strong> <code>karthiknat</code></li>
+                        <li><strong>Password:</strong> Your Docker Hub password or access token</li>
+                        <li><strong>ID:</strong> <code>dockerhub-credentials</code></li>
+                        <li><strong>Description:</strong> Docker Hub Login</li>
+                    </ul>
+                </li>
+                <li>Click <strong>Create</strong></li>
+            </ol>
+        </section>
+
+        <section id="section7">
+            <h2>Section 7: Create Jenkins Pipeline Job</h2>
+
+            <h3>7.1: Create Pipeline</h3>
+
+            <ol>
+                <li>From Jenkins dashboard, click <strong>New Item</strong></li>
+                <li>Enter name: <code>SomeRubbishAPI-Pipeline</code></li>
+                <li>Select <strong>Pipeline</strong></li>
+                <li>Click <strong>OK</strong></li>
+            </ol>
+
+            <h3>7.2: Configure Build Triggers</h3>
+
+            <ol>
+                <li>In job configuration, scroll to <strong>Build Triggers</strong></li>
+                <li>Check ☑ <strong>Poll SCM</strong></li>
+                <li>In <strong>Schedule</strong> box, enter: <code>* * * * *</code></li>
+                <li>This checks GitHub every minute for changes</li>
+            </ol>
+
+            <h3>7.3: Configure Pipeline Script</h3>
+
+            <ol>
+                <li>Scroll to <strong>Pipeline</strong> section</li>
+                <li><strong>Definition:</strong> Pipeline script from SCM</li>
+                <li><strong>SCM:</strong> Git</li>
+                <li><strong>Repository URL:</strong> <code>https://github.com/karthikeyan-1234/SomeRubbishAPI.git</code></li>
+                <li><strong>Branch Specifier:</strong> <code>*/main</code></li>
+                <li><strong>Script Path:</strong> <code>Jenkinsfile</code></li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <h3>7.4: Create Jenkinsfile</h3>
+
+            <div class="file-path">
+                <strong>Create File:</strong> C:\Users\mail2\source\repos\SomeRubbishAPI\Jenkinsfile
+            </div>
+
+            <pre><code>pipeline {
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = 'karthiknat/somerubbishapi'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out code...'
+                checkout scm
+            }
+        }
+        
+        stage('Build .NET Project') {
+            steps {
+                echo 'Building .NET project...'
+                script {
+                    dir('SomeRubbishAPI') {
+                        bat "dotnet restore"
+                        bat "dotnet build --configuration Release"
+                    }
+                }
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                echo 'Building Docker image...'
+                script {
+                    dir('SomeRubbishAPI') {
+                        bat "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} -t ${DOCKER_IMAGE}:latest ."
+                    }
+                }
+            }
+        }
+        
+        stage('Push to Docker Hub') {
+            steps {
+                echo 'Pushing Docker image to Docker Hub...'
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
+                        bat "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
+                        bat "docker push ${DOCKER_IMAGE}:latest"
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                echo 'Deploying to Docker Desktop Kubernetes...'
+                script {
+                    withCredentials([file(credentialsId: 'kube-config', variable: 'KUBECONFIG')]) {
+                        bat "kubectl apply -f backend-deploy.yml --kubeconfig=%KUBECONFIG%"
+                        bat "kubectl rollout restart deployment/somerubbishapi-deployment --kubeconfig=%KUBECONFIG%"
+                        bat "kubectl rollout status deployment/somerubbishapi-deployment --kubeconfig=%KUBECONFIG%"
+                    }
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Build, Docker image creation, push, and deployment successful!'
+            echo 'API accessible at http://localhost:7080'
+            echo 'Products endpoint: http://localhost:7080/Products'
+        }
+        failure {
+            echo 'Pipeline failed. Check logs for details.'
+        }
+    }
+}</code></pre>
+
+            <h3>7.5: Commit and Push Jenkinsfile</h3>
+
+            <pre><code>cd C:\Users\mail2\source\repos\SomeRubbishAPI
+git add Jenkinsfile
+git commit -m "Add Jenkinsfile for CI/CD pipeline"
+git push origin main</code></pre>
+
+            <h3>7.6: Trigger First Build</h3>
+
+            <ol>
+                <li>Go to Jenkins: http://localhost:8080</li>
+                <li>Click <code>SomeRubbishAPI-Pipeline</code></li>
+                <li>Click <strong>Build Now</strong></li>
+                <li>Watch build progress in <strong>Console Output</strong></li>
+                <li>Wait for all stages to complete (2-5 minutes)</li>
+            </ol>
+
+            <div class="success-box">
+                <strong>After successful build, verify deployment:</strong>
+                <pre><code>kubectl get pods
+kubectl get svc</code></pre>
+            </div>
+        </section>
+
+        <section id="section8">
+            <h2>Section 8: Deploy Kubernetes Dashboard (Optional)</h2>
+
+            <h3>8.1: Deploy Dashboard</h3>
+
+            <pre><code>kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml</code></pre>
+
+            <h3>8.2: Create Admin User</h3>
+
+            <div class="file-path">
+                <strong>Create File:</strong> C:\Users\mail2\dashboard-adminuser.yaml
+            </div>
+
+            <pre><code>apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard</code></pre>
+
+            <pre><code>kubectl apply -f C:\Users\mail2\dashboard-adminuser.yaml</code></pre>
+
+            <h3>8.3: Get Access Token</h3>
+
+            <pre><code>kubectl -n kubernetes-dashboard create token admin-user</code></pre>
+
+            <div class="warning-box">
+                <strong>Important:</strong> Copy the entire token (starts with <code>eyJ...</code>)
+            </div>
+
+            <h3>8.4: Start Dashboard Proxy</h3>
+
+            <p>Open a new Command Prompt window and run:</p>
+            <pre><code>kubectl proxy</code></pre>
+
+            <p><strong>Keep this window open.</strong></p>
+
+            <h3>8.5: Access Dashboard</h3>
+
+            <p>Open browser to:</p>
+            <pre><code>http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/</code></pre>
+
+            <ol>
+                <li>Select <strong>Token</strong> authentication</li>
+                <li>Paste the token from step 8.3</li>
+                <li>Click <strong>Sign in</strong></li>
+            </ol>
+        </section>
+
+        <section id="section9">
+            <h2>Section 9: Accessing Your Services</h2>
+
+            <h3>9.1: API Endpoints</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Endpoint</th>
+                        <th>URL</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Swagger UI</td>
+                        <td>http://localhost:7080/swagger/index.html</td>
+                        <td>API documentation and testing</td>
+                    </tr>
+                    <tr>
+                        <td>Weather Forecast</td>
+                        <td>http://localhost:7080/WeatherForecast</td>
+                        <td>Sample endpoint</td>
+                    </tr>
+                    <tr>
+                        <td>Products (All)</td>
+                        <td>http://localhost:7080/Products</td>
+                        <td>Get all products from database</td>
+                    </tr>
+                    <tr>
+                        <td>Product (Single)</td>
+                        <td>http://localhost:7080/Products/1</td>
+                        <td>Get product by ID</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>9.2: SQL Server Access</h3>
+
+            <h4>From SQL Server Management Studio (SSMS):</h4>
+            <ul>
+                <li><strong>Server name:</strong> <code>localhost,1433</code></li>
+                <li><strong>Authentication:</strong> SQL Server Authentication</li>
+                <li><strong>Login:</strong> sa</li>
+                <li><strong>Password:</strong> YourStrong@Passw0rd</li>
+                <li><strong>Database:</strong> SampleDB</li>
+            </ul>
+
+            <h4>Query to view sample data:</h4>
+            <pre><code>USE SampleDB;
+SELECT * FROM Products;</code></pre>
+
+            <h3>9.3: Other URLs</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>URL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Jenkins Dashboard</td>
+                        <td>http://localhost:8080</td>
+                    </tr>
+                    <tr>
+                        <td>Kubernetes Dashboard</td>
+                        <td>http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/</td>
+                    </tr>
+                    <tr>
+                        <td>GitHub Repository</td>
+                        <td>https://github.com/karthikeyan-1234/SomeRubbishAPI</td>
+                    </tr>
+                    <tr>
+                        <td>Docker Hub Images</td>
+                        <td>https://hub.docker.com/r/karthiknat/somerubbishapi</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>9.4: Making Code Changes</h3>
+
+            <p>The CI/CD pipeline automatically deploys changes:</p>
+            <ol>
+                <li>Edit code in Visual Studio</li>
+                <li>Commit changes: <code>git add . && git commit -m "description"</code></li>
+                <li>Push to GitHub: <code>git push origin main</code></li>
+                <li>Jenkins detects change within 1 minute</li>
+                <li>Automatic build and deployment occurs</li>
+                <li>Refresh API endpoints to see changes</li>
+            </ol>
+        </section>
+
+        <section id="troubleshooting">
+            <h2>Troubleshooting Guide</h2>
+
+            <h3>Issue 1: SQL Server Pod Not Starting</h3>
+
+            <div class="command-box">
+                <strong>Check Pod Status:</strong>
+                <pre><code>kubectl get pods -l app=sqlserver
+kubectl describe pod -l app=sqlserver</code></pre>
+            </div>
+
+            <p><strong>Common Causes:</strong></p>
+            <ul>
+                <li>Insufficient resources (SQL Server needs 2Gi RAM minimum)</li>
+                <li>Password doesn't meet complexity requirements</li>
+            </ul>
+
+            <p><strong>Solution:</strong> Increase Docker Desktop memory allocation in Settings → Resources → Memory (minimum 4GB recommended)</p>
+
+            <h3>Issue 2: API Cannot Connect to SQL Server</h3>
+
+            <div class="command-box">
+                <strong>Check Pod Logs:</strong>
+                <pre><code>kubectl logs -l app=somerubbishapi</code></pre>
+            </div>
+
+            <p><strong>Common Causes:</strong></p>
+            <ul>
+                <li>SQL Server not ready yet</li>
+                <li>Incorrect connection string</li>
+                <li>Database not initialized</li>
+            </ul>
+
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Verify SQL Server pod is Running: <code>kubectl get pods -l app=sqlserver</code></li>
+                <li>Check initialization job completed: <code>kubectl logs job/sqlserver-init-job</code></li>
+                <li>Test connection from API pod:
+                    <pre><code>kubectl exec -it $(kubectl get pod -l app=somerubbishapi -o jsonpath="{.items[0].metadata.name}") -- curl sqlserver-service:1433</code></pre>
+                </li>
+            </ul>
+
+            <h3>Issue 3: SSMS Cannot Connect to localhost:1433</h3>
+
+            <p><strong>Verify Service Type:</strong></p>
+            <pre><code>kubectl get svc sqlserver-service</code></pre>
+
+            <p>Should show <code>TYPE: LoadBalancer</code></p>
+
+            <p><strong>If showing ClusterIP:</strong></p>
+            <ol>
+                <li>Update sqlserver-deploy.yml service type to <code>LoadBalancer</code></li>
+                <li>Apply: <code>kubectl apply -f sqlserver-deploy.yml</code></li>
+            </ol>
+
+            <p><strong>Alternative - Port Forward:</strong></p>
+            <pre><code>kubectl port-forward svc/sqlserver-service 1433:1433</code></pre>
+
+            <h3>Issue 4: Jenkins Build Fails - Docker Access</h3>
+
+            <p><strong>Verify Docker Access:</strong></p>
+            <ol>
+                <li>Manage Jenkins → Script Console</li>
+                <li>Run: <code>"docker --version".execute().text</code></li>
+            </ol>
+
+            <p><strong>If fails, add Docker to PATH:</strong></p>
+            <ol>
+                <li>System Properties → Environment Variables</li>
+                <li>Edit PATH, add: <code>C:\Program Files\Docker\Docker\resources\bin</code></li>
+                <li>Restart Jenkins</li>
+            </ol>
+
+            <h3>Issue 5: Pod CrashLoopBackOff</h3>
+
+            <div class="command-box">
+                <strong>Check Logs:</strong>
+                <pre><code>kubectl logs -l app=somerubbishapi</code></pre>
+            </div>
+
+            <p><strong>Common Causes:</strong></p>
+            <ul>
+                <li>HTTPS redirection not disabled in Program.cs</li>
+                <li>Port mismatch (should be 7080)</li>
+                <li>Database connection error</li>
+            </ul>
+
+            <p><strong>Solutions:</strong></p>
+            <ul>
+                <li>Verify <code>app.UseHttpsRedirection();</code> is commented</li>
+                <li>Check all port references are 7080</li>
+                <li>Verify SQL Server is running and accessible</li>
+            </ul>
+
+            <h3>Issue 6: Products Endpoint Returns 500 Error</h3>
+
+            <p><strong>Check API Logs:</strong></p>
+            <pre><code>kubectl logs -l app=somerubbishapi -f</code></pre>
+
+            <p><strong>Verify Database Exists:</strong></p>
+            <p>Connect to SQL Server via SSMS and run:</p>
+            <pre><code>SELECT name FROM sys.databases WHERE name = 'SampleDB';
+USE SampleDB;
+SELECT * FROM Products;</code></pre>
+
+            <p><strong>If database missing, re-run initialization:</strong></p>
+            <pre><code>kubectl delete job sqlserver-init-job
+kubectl apply -f sqlserver-init-job.yml</code></pre>
+
+            <h3>General Debugging Commands</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Purpose</th>
+                        <th>Command</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>View all pods</td>
+                        <td><code>kubectl get pods</code></td>
+                    </tr>
+                    <tr>
+                        <td>View all services</td>
+                        <td><code>kubectl get svc</code></td>
+                    </tr>
+                    <tr>
+                        <td>View pod logs</td>
+                        <td><code>kubectl logs &lt;pod-name&gt;</code></td>
+                    </tr>
+                    <tr>
+                        <td>Describe pod</td>
+                        <td><code>kubectl describe pod &lt;pod-name&gt;</code></td>
+                    </tr>
+                    <tr>
+                        <td>Restart deployment</td>
+                        <td><code>kubectl rollout restart deployment/&lt;name&gt;</code></td>
+                    </tr>
+                    <tr>
+                        <td>Delete pod (auto-recreates)</td>
+                        <td><code>kubectl delete pod &lt;pod-name&gt;</code></td>
+                    </tr>
+                    <tr>
+                        <td>View events</td>
+                        <td><code>kubectl get events --sort-by=.metadata.creationTimestamp</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="appendix">
+            <h2>Appendix: Quick Reference</h2>
+
+            <h3>Connection Strings</h3>
+
+            <h4>For Kubernetes Deployment (backend-deploy.yml):</h4>
+            <pre><code>Server=sqlserver-service,1433;Database=SampleDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;</code></pre>
+
+            <h4>For Local Development (appsettings.json):</h4>
+            <pre><code>Server=localhost,1433;Database=SampleDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;</code></pre>
+
+            <h3>Important File Locations</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Location</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Project Root</td>
+                        <td>C:\Users\mail2\source\repos\SomeRubbishAPI</td>
+                    </tr>
+                    <tr>
+                        <td>Dockerfile</td>
+                        <td>SomeRubbishAPI\Dockerfile</td>
+                    </tr>
+                    <tr>
+                        <td>Jenkinsfile</td>
+                        <td>Root\Jenkinsfile</td>
+                    </tr>
+                    <tr>
+                        <td>API Deployment</td>
+                        <td>Root\backend-deploy.yml</td>
+                    </tr>
+                    <tr>
+                        <td>SQL Deployment</td>
+                        <td>Root\sqlserver-deploy.yml</td>
+                    </tr>
+                    <tr>
+                        <td>SQL Initialization</td>
+                        <td>Root\sqlserver-init-job.yml</td>
+                    </tr>
+                    <tr>
+                        <td>Kubeconfig</td>
+                        <td>C:\Users\mail2\.kube\config</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Kubernetes Quick Commands</h3>
+
+            <pre><code># View all resources
+kubectl get all
+
+# View specific resources
+kubectl get pods
+kubectl get deployments
+kubectl get services
+kubectl get pvc
+
+# View logs
+kubectl logs -l app=somerubbishapi
+kubectl logs -l app=sqlserver
+
+# Restart deployments
+kubectl rollout restart deployment/somerubbishapi-deployment
+kubectl rollout restart deployment/sqlserver-deployment
+
+# Delete and reapply
+kubectl delete -f backend-deploy.yml
+kubectl apply -f backend-deploy.yml
+
+# Execute into pod
+kubectl exec -it &lt;pod-name&gt; -- /bin/bash
+
+# Port forward (temporary access)
+kubectl port-forward svc/sqlserver-service 1433:1433</code></pre>
+
+            <h3>Git Quick Commands</h3>
+
+            <pre><code># Check status
+git status
+
+# Add all changes
+git add .
+
+# Commit changes
+git commit -m "description"
+
+# Push to GitHub
+git push origin main
+
+# Pull latest
+git pull origin main
+
+# View commit history
+git log --oneline</code></pre>
+
+            <h3>Docker Quick Commands</h3>
+
+            <pre><code># View images
+docker images
+
+# View running containers
+docker ps
+
+# Remove old images
+docker rmi &lt;image-id&gt;
+
+# Build image manually
+docker build -t karthiknat/somerubbishapi:latest .
+
+# Push to Docker Hub
+docker push karthiknat/somerubbishapi:latest
+
+# Clean up
+docker system prune -a</code></pre>
+
+            <h3>Sample Database Schema</h3>
+
+            <pre><code>CREATE TABLE Products (
+    Id INT PRIMARY KEY IDENTITY(1,1),
+    Name NVARCHAR(100) NOT NULL,
+    Price DECIMAL(18,2) NOT NULL,
+    Description NVARCHAR(500)
+);
+
+-- Sample data (5 records pre-loaded)
+-- Laptop, Mouse, Keyboard, Monitor, Headphones</code></pre>
+        </section>
+
+        <footer style="margin-top: 50px; padding-top: 20px; border-top: 2px solid #e0e0e0; text-align: center; color: #666;">
+            <p><strong>CI/CD Setup Guide - Version 2.0</strong></p>
+            <p>Complete deployment with Jenkins, Kubernetes, and SQL Server</p>
+            <p>Generated on October 12, 2025</p>
+        </footer>
+    </div>
+</body>
+</html>

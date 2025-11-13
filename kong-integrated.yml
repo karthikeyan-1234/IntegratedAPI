@@ -201,7 +201,7 @@ metadata:
   name: kong-proxy
   namespace: kong
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: kong
   ports:
@@ -215,7 +215,7 @@ metadata:
   name: kong-admin
   namespace: kong
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: kong
   ports:
@@ -229,10 +229,54 @@ metadata:
   name: kong-manager
   namespace: kong
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: kong
   ports:
   - name: manager
     port: 8002
     targetPort: 8002
+---
+# Ingress for Kong Admin API
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-admin-ingress
+  namespace: kong
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: kong-admin.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-admin
+            port:
+              number: 8001
+---
+# Ingress for Kong Proxy
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-proxy-ingress
+  namespace: kong
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: kong-proxy.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-proxy
+            port:
+              number: 8000
