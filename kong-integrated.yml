@@ -156,7 +156,9 @@ spec:
         - name: KONG_ADMIN_GUI_LISTEN
           value: "0.0.0.0:8002"
         - name: KONG_ADMIN_GUI_URL
-          value: "http://localhost:8002"
+          value: "http://kong-ui.local"
+        - name: KONG_ADMIN_GUI_API_URL
+          value: "http://kong-ui.local/api"
         - name: KONG_PROXY_ACCESS_LOG
           value: "/dev/stdout"
         - name: KONG_ADMIN_ACCESS_LOG
@@ -237,7 +239,38 @@ spec:
     port: 8002
     targetPort: 8002
 ---
-# Ingress for Kong Admin API
+# Combined Ingress for Kong UI (Manager + Admin API on same host)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-ui-ingress
+  namespace: kong
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: kong-ui.local
+    http:
+      paths:
+      # Admin API accessible at kong-ui.local/api/*
+      - path: /api(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: kong-admin
+            port:
+              number: 8001
+      # Kong Manager UI accessible at kong-ui.local/*
+      - path: /()(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: kong-manager
+            port:
+              number: 8002
+---
+# Ingress for Kong Admin API (standalone access via kong-admin.local)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
