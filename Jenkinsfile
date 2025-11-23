@@ -72,44 +72,25 @@ pipeline {
             }
         }
         
-        stage('Deploy to Kubernetes') {
-            steps {
-                echo 'Deploying IntegratedAPI and SQL Server to Kubernetes...'
-                script {
-                    // Copy current kubeconfig to workspace before deploying
-                    bat """
-                        copy /Y "%USERPROFILE%\\.kube\\config" "%WORKSPACE%\\kubeconfig"
-                        set KUBECONFIG=%WORKSPACE%\\kubeconfig
-                        kubectl apply -f sqlserver-deploy.yml
-                    """
-                    
-                    // Deploy the Integrated API
-                    bat """
-                        set KUBECONFIG=%WORKSPACE%\\kubeconfig
-                        kubectl apply -f integratedapi-deploy.yml
-                    """
-                    
-                    // Restart & verify rollout for IntegratedAPI
-                    bat """
-                        set KUBECONFIG=%WORKSPACE%\\kubeconfig
-                        kubectl rollout restart deployment/integratedapi-deployment
-                    """
-                    
-                    bat """
-                        set KUBECONFIG=%WORKSPACE%\\kubeconfig
-                        kubectl rollout status deployment/integratedapi-deployment
-                    """
-                    
-                    // Check SQL Server deployment status (non-blocking)
-                    bat """
-                        set KUBECONFIG=%WORKSPACE%\\kubeconfig
-                        kubectl get pods -l app=sqlserver
-                        echo Note: SQL Server may take 2-3 minutes to fully start. Check status with: kubectl get pods
-                    """
-                }
-            }
+stage('Deploy to Kubernetes') {
+    environment {
+        KUBECONFIG = "${env.USERPROFILE}\\.kube\\config"
+    }
+    steps {
+        echo 'Deploying IntegratedAPI and SQL Server to Kubernetes...'
+        script {
+            bat "kubectl apply -f sqlserver-deploy.yml"
+            bat "kubectl apply -f integratedapi-deploy.yml"
+            bat "kubectl rollout restart deployment/integratedapi-deployment"
+            bat "kubectl rollout status deployment/integratedapi-deployment"
+            bat """
+                kubectl get pods -l app=sqlserver
+                echo Note: SQL Server may take 2-3 minutes to fully start.
+            """
         }
     }
+}
+
     
     post {
         success {
