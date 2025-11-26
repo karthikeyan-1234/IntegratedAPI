@@ -3,6 +3,7 @@ using IntegratedAPI.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IntegratedAPI.Migrations
 {
     [DbContext(typeof(ProjectDbContext))]
-    partial class ProjectDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251126103559_added cart")]
+    partial class addedcart
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -29,20 +32,14 @@ namespace IntegratedAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"));
 
-                    b.Property<int?>("Productid")
-                        .HasColumnType("int");
-
-                    b.Property<int>("product_id")
-                        .HasColumnType("int");
+                    b.Property<string>("product_id")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<float>("quantity")
                         .HasColumnType("real");
 
                     b.HasKey("id");
-
-                    b.HasIndex("Productid");
-
-                    b.HasIndex("product_id");
 
                     b.ToTable("cartItem", (string)null);
                 });
@@ -89,21 +86,6 @@ namespace IntegratedAPI.Migrations
                     b.HasKey("id");
 
                     b.ToTable("product", (string)null);
-                });
-
-            modelBuilder.Entity("IntegratedAPI.Models.cartItem", b =>
-                {
-                    b.HasOne("IntegratedAPI.Models.product", "Product")
-                        .WithMany()
-                        .HasForeignKey("Productid");
-
-                    b.HasOne("IntegratedAPI.Models.product", null)
-                        .WithMany()
-                        .HasForeignKey("product_id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
                 });
 #pragma warning restore 612, 618
         }
