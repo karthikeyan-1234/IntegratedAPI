@@ -469,7 +469,7 @@ spec:
         - name: KONG_ADMIN_ERROR_LOG
           value: /dev/stderr
         - name: KONG_ADMIN_LISTEN
-          value: 0.0.0.0:8001, 0.0.0.0:8444 ssl
+          value: 0.0.0.0, 0.0.0.0:8444 ssl
         - name: KONG_DECLARATIVE_CONFIG
           value: /etc/kong/kong.yml
         ports:
@@ -551,15 +551,15 @@ data:
 
             <div class="command-box">
                 <strong>Open another PowerShell window for Admin API:</strong>
-                <pre><code>kubectl port-forward -n kong service/kong-proxy 8001:8001</code></pre>
+                <pre><code>kubectl port-forward -n kong service/kong-proxy 8001</code></pre>
             </div>
 
             <div class="info-box">
                 <strong>Kong Access Points:</strong>
                 <ul>
                     <li><strong>Kong Gateway:</strong> http://localhost:8000</li>
-                    <li><strong>Kong Admin API:</strong> http://kong-admin.local:8001</li>
-                    <li><strong>Direct Admin Access:</strong> http://localhost:8001</li>
+                    <li><strong>Kong Admin API:</strong> http://kong-admin.local</li>
+                    <li><strong>Direct Admin Access:</strong> http://localhost</li>
                 </ul>
             </div>
 
@@ -567,7 +567,7 @@ data:
 
             <div class="command-box">
                 <strong>Test Kong Admin API:</strong>
-                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local:8001/services" -Method GET</code></pre>
+                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/services" -Method GET</code></pre>
             </div>
 
             <div class="success-box">
@@ -584,7 +584,7 @@ data:
 
             <h4>Create API Service in Kong</h4>
             <div class="command-box">
-                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local:8001/services" `
+                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/services" `
     -Method POST `
     -ContentType 'application/json' `
     -Body (@{
@@ -596,7 +596,7 @@ data:
             <h4>Create Routes for Different API Paths</h4>
             <div class="command-box">
                 <strong>Route for endpoints WITH /api prefix:</strong>
-                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local:8001/services/integratedapi-service/routes" `
+                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/routes" `
     -Method POST `
     -ContentType 'application/json' `
     -Body (@{
@@ -610,7 +610,7 @@ data:
 
             <div class="command-box">
                 <strong>Route for endpoints WITHOUT /api prefix:</strong>
-                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local:8001/services/integratedapi-service/routes" `
+                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/routes" `
     -Method POST `
     -ContentType 'application/json' `
     -Body (@{
@@ -624,7 +624,7 @@ data:
 
             <div class="command-box">
                 <strong>Route for Swagger UI:</strong>
-                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local:8001/services/integratedapi-service/routes" `
+                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/routes" `
     -Method POST `
     -ContentType 'application/json' `
     -Body (@{
@@ -640,12 +640,12 @@ data:
 
             <div class="command-box">
                 <strong>Check Services:</strong>
-                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local:8001/services" -Method GET</code></pre>
+                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/services" -Method GET</code></pre>
             </div>
 
             <div class="command-box">
                 <strong>Check Routes:</strong>
-                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local:8001/services/integratedapi-service/routes" -Method GET</code></pre>
+                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/routes" -Method GET</code></pre>
             </div>
 
             <h3>9.3: Test Kong Routing</h3>
@@ -678,7 +678,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/swagger" -Method GET</code></pre>
 
             <div class="command-box">
                 <strong>Enable CORS for API:</strong>
-                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local:8001/services/integratedapi-service/plugins" `
+                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/plugins" `
     -Method POST `
     -ContentType 'application/json' `
     -Body (@{
@@ -749,12 +749,12 @@ Invoke-RestMethod -Uri "http://localhost:8000/swagger" -Method GET</code></pre>
                     </tr>
                     <tr>
                         <td>Kong Admin API</td>
-                        <td>http://kong-admin.local:8001</td>
+                        <td>http://kong-admin.local</td>
                         <td>Configuration and management</td>
                     </tr>
                     <tr>
                         <td>Kong Status</td>
-                        <td>http://kong-admin.local:8001/status</td>
+                        <td>http://kong-admin.local/status</td>
                         <td>Kong health and metrics</td>
                     </tr>
                 </tbody>
@@ -826,7 +826,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/swagger" -Method GET</code></pre>
             <h4>Issue 1: Kong Routes Returning 404</h4>
             <div class="command-box">
                 <strong>Check Kong Routes:</strong>
-                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local:8001/routes" -Method GET</code></pre>
+                <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/routes" -Method GET</code></pre>
             </div>
             <p><strong>Solution:</strong> Verify strip_path setting matches your API's expected paths</p>
 
@@ -865,7 +865,7 @@ kubectl logs -n kong deployment/kong</code></pre>
                     </tr>
                     <tr>
                         <td>Check Kong routes</td>
-                        <td><code>Invoke-RestMethod -Uri "http://kong-admin.local:8001/routes" -Method GET</code></td>
+                        <td><code>Invoke-RestMethod -Uri "http://kong-admin.local/routes" -Method GET</code></td>
                     </tr>
                     <tr>
                         <td>Test API through Kong</td>
@@ -909,16 +909,16 @@ kubectl logs -n kong deployment/kong</code></pre>
 
             <h3>PowerShell Kong Management Commands</h3>
             <pre><code># Create service
-Invoke-RestMethod -Uri "http://kong-admin.local:8001/services" -Method POST -Body $body
+Invoke-RestMethod -Uri "http://kong-admin.local/services" -Method POST -Body $body
 
 # List all services
-Invoke-RestMethod -Uri "http://kong-admin.local:8001/services" -Method GET
+Invoke-RestMethod -Uri "http://kong-admin.local/services" -Method GET
 
 # Delete service (cleanup)
-Invoke-RestMethod -Uri "http://kong-admin.local:8001/services/integratedapi-service" -Method DELETE
+Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service" -Method DELETE
 
 # Add CORS plugin
-Invoke-RestMethod -Uri "http://kong-admin.local:8001/services/integratedapi-service/plugins" -Method POST -Body $corsBody</code></pre>
+Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/plugins" -Method POST -Body $corsBody</code></pre>
 
             <h3>Kong Deployment Files</h3>
             <table>

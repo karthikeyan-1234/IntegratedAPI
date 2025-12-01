@@ -32,7 +32,7 @@ namespace IntegratedAPI.Controllers
         [HttpPost("AddProductAsync")]
         public async Task<IActionResult> AddProductAsync([FromBody] newProduct product)
         {
-           product newProduct1 = new product
+            product newProduct1 = new product
             {
                 name = product.name,
                 price = product.price,
@@ -44,6 +44,22 @@ namespace IntegratedAPI.Controllers
             _projectDbContext.Products.Add(newProduct1);
             await _projectDbContext.SaveChangesAsync();
             return Ok(product);
+        }
+
+        [HttpPut("UpdateProductAsync")]
+        public async Task<IActionResult> UpdateProductAsync([FromBody] product updatedProduct)
+        {
+            var existingProduct = await _projectDbContext.Products.FindAsync(updatedProduct.id);
+            if (existingProduct == null)
+            {
+                return NotFound();
+            }
+            existingProduct.name = updatedProduct.name;
+            existingProduct.price = updatedProduct.price;
+            existingProduct.image = updatedProduct.image;
+            existingProduct.description = updatedProduct.description;
+            await _projectDbContext.SaveChangesAsync();
+            return Ok(existingProduct);
         }
     }
 }
