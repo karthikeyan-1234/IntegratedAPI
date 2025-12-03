@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complete CI/CD Setup Guide - .NET 8 Web API with Jenkins, Kubernetes, Kong & SQL Server</title>
+    <title>Complete CI/CD Setup Guide - .NET 8 Web API with Jenkins, Kubernetes, Kong, Nginx Ingress & SQL Server</title>
     <style>
         * {
             margin: 0;
@@ -262,11 +262,11 @@
     <div class="container">
         <header>
             <h1>Complete CI/CD Setup Guide</h1>
-            <p class="subtitle">.NET 8 Web API with Jenkins, Docker Desktop Kubernetes, Kong API Gateway & SQL Server</p>
+            <p class="subtitle">.NET 8 Web API with Jenkins, Docker Desktop Kubernetes, Kong API Gateway, Nginx Ingress & SQL Server</p>
             <div class="meta-info">
                 <span><strong>Author:</strong> CI/CD Implementation Guide</span>
                 <span><strong>Date:</strong> October 12, 2025</span>
-                <span><strong>Version:</strong> 3.1</span>
+                <span><strong>Version:</strong> 3.2</span>
             </div>
         </header>
 
@@ -283,9 +283,11 @@
                 <li><a href="#section5">Section 5: Push Your Code to GitHub</a></li>
                 <li><a href="#section6">Section 6: Configure Jenkins</a></li>
                 <li><a href="#section7">Section 7: Create Jenkins Pipeline Job</a></li>
-                <li><a href="#section8">Section 8: Deploy Kong API Gateway</a></li>
-                <li><a href="#section9">Section 9: Configure Kong Routes</a></li>
-                <li><a href="#section10">Section 10: Accessing Your Services</a></li>
+                <li><a href="#section8">Section 8: Deploy Nginx Ingress Controller</a></li>
+                <li><a href="#section9">Section 9: Configure Hosts File for Local DNS</a></li>
+                <li><a href="#section10">Section 10: Deploy Kong API Gateway</a></li>
+                <li><a href="#section11">Section 11: Configure Kong Routes</a></li>
+                <li><a href="#section12">Section 12: Accessing Your Services</a></li>
                 <li><a href="#troubleshooting">Troubleshooting Guide</a></li>
                 <li><a href="#appendix">Appendix: Configuration Files</a></li>
             </ol>
@@ -293,7 +295,7 @@
 
         <section id="overview">
             <h2>Overview</h2>
-            <p>This guide provides step-by-step instructions to set up a complete CI/CD pipeline for deploying an ASP.NET Core Web API (.NET 8) with SQL Server using Jenkins, Docker, Kubernetes, and Kong API Gateway on your local Windows development machine.</p>
+            <p>This guide provides step-by-step instructions to set up a complete CI/CD pipeline for deploying an ASP.NET Core Web API (.NET 8) with SQL Server using Jenkins, Docker, Kubernetes, Nginx Ingress Controller, and Kong API Gateway on your local Windows development machine.</p>
             
             <h3>What You'll Build</h3>
             <ul>
@@ -301,7 +303,8 @@
                 <li><strong>CI/CD Tool:</strong> Jenkins for automated build and deployment</li>
                 <li><strong>Containerization:</strong> Docker for creating container images</li>
                 <li><strong>Orchestration:</strong> Docker Desktop Kubernetes</li>
-                <li><strong>API Gateway:</strong> Kong for routing and load balancing</li>
+                <li><strong>Ingress Controller:</strong> Nginx Ingress for routing external traffic</li>
+                <li><strong>API Gateway:</strong> Kong for API management and load balancing</li>
                 <li><strong>Database:</strong> SQL Server in Kubernetes with sample data</li>
                 <li><strong>Registry:</strong> Docker Hub for storing container images</li>
             </ul>
@@ -315,8 +318,9 @@
                 <li>Docker image is pushed to Docker Hub</li>
                 <li>Kubernetes deploys the updated application</li>
                 <li>API connects to SQL Server in Kubernetes</li>
+                <li>Nginx Ingress routes external traffic to Kong</li>
                 <li>Kong API Gateway routes traffic to API services</li>
-                <li>Application accessible at http://localhost:8000</li>
+                <li>Application accessible at http://kong-proxy.local/swagger/index.html</li>
             </ol>
         </section>
 
@@ -333,6 +337,7 @@
                 <li><strong>Visual Studio</strong> or <strong>VS Code</strong> - For code editing</li>
                 <li><strong>PowerShell</strong> - For running Kong configuration commands</li>
                 <li><strong>SQL Server Management Studio (SSMS)</strong> - Optional, for database management</li>
+                <li><strong>Text Editor with Admin Rights</strong> - For editing hosts file</li>
             </ul>
 
             <h3>Accounts Required</h3>
@@ -347,8 +352,15 @@
                 <li><strong>GitHub Repository:</strong> https://github.com/karthikeyan-1234/SomeRubbishAPI</li>
                 <li><strong>Jenkins URL:</strong> http://localhost:8080</li>
                 <li><strong>Docker Hub Username:</strong> karthiknat</li>
-                <li><strong>Kong Gateway:</strong> http://localhost:8000</li>
+            </ul>
+
+            <h3>Service URLs (After Configuration)</h3>
+            <ul>
+                <li><strong>Kong Gateway:</strong> http://kong-proxy.local</li>
                 <li><strong>Kong Admin API:</strong> http://kong-admin.local</li>
+                <li><strong>Kong UI:</strong> http://kong-ui.local</li>
+                <li><strong>API Swagger UI:</strong> http://kong-proxy.local/swagger/index.html</li>
+                <li><strong>Direct API Access:</strong> http://localhost:7080</li>
             </ul>
         </section>
 
@@ -366,6 +378,12 @@
                      ┌──────────────────────────────────┐
                      │  Docker Desktop Kubernetes       │
                      │  ┌────────────────────────────┐  │
+                     │  │    Nginx Ingress Controller │ │
+                     │  │        (Port: 80/443)       │ │
+                     │  └────────────────────────────┘  │
+                     │              │                   │
+                     │              ▼                   │
+                     │  ┌────────────────────────────┐  │
                      │  │      Kong API Gateway      │  │
                      │  │        (Port: 8000)        │  │
                      │  └────────────────────────────┘  │
@@ -381,14 +399,25 @@
                      └──────────────────────────────────┘
                                   │
                                   ▼
-                    http://localhost:8000 (Kong Gateway)
-                    ├─ /api/* → API Service
-                    ├─ /swagger → API Swagger UI  
-                    └─ /web/* → Angular Frontend
+                    http://kong-proxy.local (via Nginx Ingress)
+                    ├─ /api/* → Kong → API Service
+                    ├─ /swagger → Kong → API Swagger UI  
+                    ├─ /admin → Kong Admin API
+                    └─ / → Kong UI Dashboard
                 </pre>
+            </div>
+            
+            <div class="info-box">
+                <strong>New Architecture Components:</strong>
+                <ul>
+                    <li><strong>Nginx Ingress Controller:</strong> Routes external HTTP/HTTPS traffic to Kong service</li>
+                    <li><strong>Local DNS via hosts file:</strong> Uses custom domain names for local development</li>
+                    <li><strong>No Port Forwarding Required:</strong> Services accessible via standard HTTP ports</li>
+                </ul>
             </div>
         </section>
 
+        <!-- Sections 1-7 remain unchanged from previous version -->
         <section id="section1">
             <h2>Section 1: Enable Kubernetes in Docker Desktop</h2>
 
@@ -676,13 +705,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: somerubbishapi-service
+  name: integratedapi-service
   labels:
     app: somerubbishapi
 spec:
   selector:
     app: somerubbishapi
-  type: LoadBalancer
+  type: ClusterIP
   ports:
     - protocol: TCP
       port: 7080
@@ -690,13 +719,13 @@ spec:
       name: http</code></pre>
 
             <div class="warning-box">
-                <strong>Note:</strong> The connection string uses <code>sqlserver-service</code> (Kubernetes service name) for pod-to-pod communication.
+                <strong>Important Change:</strong> The service type is now <code>ClusterIP</code> (instead of LoadBalancer) since Kong will handle external traffic.
             </div>
         </section>
 
         <section id="section4">
             <h2>Section 4: Add Database Integration to API</h2>
-
+            <!-- Content remains the same as previous version -->
             <h3>4.1: Add NuGet Packages</h3>
 
             <div class="command-box">
@@ -843,33 +872,11 @@ namespace SomeRubbishAPI.Controllers
         }
     }
 }</code></pre>
-
-            <h3>4.7: Directory Structure Verification</h3>
-
-            <pre><code>C:\Users\mail2\source\repos\SomeRubbishAPI\
-├── Jenkinsfile
-├── backend-deploy.yml
-├── sqlserver-deploy.yml
-├── sqlserver-init-job.yml
-├── SomeRubbishAPI\
-│   ├── Dockerfile
-│   ├── SomeRubbishAPI.csproj
-│   ├── Program.cs
-│   ├── appsettings.json
-│   ├── Controllers\
-│   │   ├── WeatherForecastController.cs
-│   │   └── ProductsController.cs
-│   ├── Models\
-│   │   └── Product.cs
-│   ├── Data\
-│   │   └── ApplicationDbContext.cs
-│   └── Properties\
-└── .git\</code></pre>
         </section>
 
         <section id="section5">
             <h2>Section 5: Push Your Code to GitHub</h2>
-
+            <!-- Content remains the same as previous version -->
             <h3>5.1: Initialize Git Repository (If Not Already Done)</h3>
             
             <div class="command-box">
@@ -898,7 +905,7 @@ git push -u origin main</code></pre>
 
         <section id="section6">
             <h2>Section 6: Configure Jenkins</h2>
-
+            <!-- Content remains the same as previous version -->
             <h3>6.1: Install Required Jenkins Plugins</h3>
 
             <ol>
@@ -963,7 +970,7 @@ println proc.text</code></pre>
 
         <section id="section7">
             <h2>Section 7: Create Jenkins Pipeline Job</h2>
-
+            <!-- Content remains the same as previous version -->
             <h3>7.1: Create Pipeline</h3>
 
             <ol>
@@ -1069,8 +1076,8 @@ println proc.text</code></pre>
     post {
         success {
             echo 'Build, Docker image creation, push, and deployment successful!'
-            echo 'API accessible at http://localhost:7080'
-            echo 'Products endpoint: http://localhost:7080/Products'
+            echo 'API accessible through Kong Gateway at http://kong-proxy.local'
+            echo 'Products endpoint: http://kong-proxy.local/api/Products'
         }
         failure {
             echo 'Pipeline failed. Check logs for details.'
@@ -1102,13 +1109,184 @@ kubectl get svc</code></pre>
             </div>
         </section>
 
+        <!-- NEW SECTION: Nginx Ingress Controller -->
         <section id="section8">
-            <h2>Section 8: Deploy Kong API Gateway</h2>
+            <h2>Section 8: Deploy Nginx Ingress Controller</h2>
 
-            <h3>8.1: Deploy Kong to Kubernetes</h3>
+            <h3>8.1: Deploy Nginx Ingress Controller</h3>
+
+            <div class="command-box">
+                <strong>Deploy Nginx Ingress Controller:</strong>
+                <pre><code>kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml</code></pre>
+            </div>
+
+            <div class="info-box">
+                <strong>Note:</strong> This installs the official Nginx Ingress Controller which will handle external HTTP/HTTPS traffic and route it to our Kong service.
+            </div>
+
+            <h3>8.2: Verify Ingress Controller Installation</h3>
+
+            <div class="command-box">
+                <strong>Check Ingress Controller Pods:</strong>
+                <pre><code>kubectl get pods -n ingress-nginx -w</code></pre>
+                <p>Wait for pods to show Running status (2-3 minutes)</p>
+            </div>
+
+            <div class="command-box">
+                <strong>Check Ingress Controller Service:</strong>
+                <pre><code>kubectl get svc -n ingress-nginx</code></pre>
+            </div>
+
+            <div class="success-box">
+                <strong>Expected Output:</strong>
+                <pre><code>NAME                                 TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller             LoadBalancer   10.96.xxx.xxx   localhost     80:3xxxx/TCP,443:3xxxx/TCP   2m
+ingress-nginx-controller-admission   ClusterIP      10.96.xxx.xxx   &lt;none&gt;        443/TCP                      2m</code></pre>
+            </div>
+
+            <h3>8.3: Create Kong Ingress Resource</h3>
 
             <div class="file-path">
-                <strong>Create File:</strong> C:\Users\mail2\kong-deploy.yml
+                <strong>Create File:</strong> C:\Users\mail2\kong-ingress.yml
+            </div>
+
+            <pre><code>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-ingress
+  namespace: kong
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "kong-proxy.local"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-proxy
+            port:
+              number: 8000
+  - host: "kong-admin.local"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-proxy
+            port:
+              number: 8001
+  - host: "kong-ui.local"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-proxy
+            port:
+              number: 8002</code></pre>
+
+            <div class="command-box">
+                <strong>Apply Kong Ingress Configuration:</strong>
+                <pre><code>kubectl apply -f C:\Users\mail2\kong-ingress.yml</code></pre>
+            </div>
+
+            <div class="info-box">
+                <strong>Ingress Configuration Explained:</strong>
+                <ul>
+                    <li><strong>kong-proxy.local</strong> → Routes to Kong proxy service (port 8000)</li>
+                    <li><strong>kong-admin.local</strong> → Routes to Kong admin API (port 8001)</li>
+                    <li><strong>kong-ui.local</strong> → Routes to Kong UI dashboard (port 8002)</li>
+                    <li><strong>No port forwarding needed</strong> → All traffic goes through standard HTTP port 80</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- NEW SECTION: Hosts File Configuration -->
+        <section id="section9">
+            <h2>Section 9: Configure Hosts File for Local DNS</h2>
+
+            <h3>9.1: Edit Windows Hosts File</h3>
+
+            <div class="file-path">
+                <strong>File Location:</strong> C:\Windows\System32\drivers\etc\hosts
+            </div>
+
+            <p><strong>Open Notepad as Administrator and edit the hosts file:</strong></p>
+
+            <pre><code># Copyright (c) 1993-2009 Microsoft Corp.
+#
+# This is a sample HOSTS file used by Microsoft TCP/IP for Windows.
+#
+# This file contains the mappings of IP addresses to host names. Each
+# entry should be kept on an individual line. The IP address should
+# be placed in the first column followed by the corresponding host name.
+# The IP address and the host name should be separated by at least one
+# space.
+#
+# Additionally, comments (such as these) may be inserted on individual
+# lines or following the machine name denoted by a '#' symbol.
+#
+# For example:
+#
+#      102.54.94.97     rhino.acme.com          # source server
+#       38.25.63.10     x.acme.com              # x client host
+
+# localhost name resolution is handled within DNS itself.
+#	127.0.0.1       localhost
+#	::1             localhost
+
+# Kong Services
+127.0.0.1 kong-proxy.local
+127.0.0.1 kong-admin.local
+127.0.0.1 kong-ui.local
+# Added by Docker Desktop
+192.168.1.11 host.docker.internal
+192.168.1.11 gateway.docker.internal
+# To allow the same kube context to work on the host and the container:
+127.0.0.1 kubernetes.docker.internal
+# Add prometheus.local
+127.0.0.1 prometheus.local
+# End of section</code></pre>
+
+            <h3>9.2: Verify Hosts File Configuration</h3>
+
+            <div class="command-box">
+                <strong>Test DNS Resolution:</strong>
+                <pre><code>ping kong-proxy.local
+ping kong-admin.local
+ping kong-ui.local</code></pre>
+            </div>
+
+            <div class="success-box">
+                <strong>Expected Output:</strong> Should show responses from 127.0.0.1
+            </div>
+
+            <div class="info-box">
+                <strong>Hosts File Benefits:</strong>
+                <ul>
+                    <li><strong>No port forwarding required</strong> - Access services via standard HTTP</li>
+                    <li><strong>Clean URLs</strong> - Use domain names instead of localhost:port</li>
+                    <li><strong>Easy to remember</strong> - Descriptive domain names for each service</li>
+                    <li><strong>Production-like setup</strong> - Simulates real domain routing</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- UPDATED SECTION: Kong Deployment with Ingress -->
+        <section id="section10">
+            <h2>Section 10: Deploy Kong API Gateway</h2>
+
+            <h3>10.1: Update Kong Deployment File for Ingress</h3>
+
+            <div class="file-path">
+                <strong>Update File:</strong> C:\Users\mail2\kong-deploy.yml
             </div>
 
             <pre><code>apiVersion: v1
@@ -1146,7 +1324,9 @@ spec:
         - name: KONG_ADMIN_ERROR_LOG
           value: /dev/stderr
         - name: KONG_ADMIN_LISTEN
-          value: 0.0.0.0, 0.0.0.0:8444 ssl
+          value: 0.0.0.0:8001, 0.0.0.0:8444 ssl
+        - name: KONG_ADMIN_GUI_URL
+          value: http://kong-ui.local:8002
         - name: KONG_DECLARATIVE_CONFIG
           value: /etc/kong/kong.yml
         ports:
@@ -1154,6 +1334,8 @@ spec:
           name: proxy
         - containerPort: 8001
           name: admin
+        - containerPort: 8002
+          name: ui
         - containerPort: 8443
           name: proxy-ssl
         - containerPort: 8444
@@ -1172,18 +1354,19 @@ metadata:
   name: kong-proxy
   namespace: kong
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: kong
   ports:
   - name: proxy
     port: 8000
     targetPort: 8000
-    nodePort: 30000
   - name: admin
     port: 8001
     targetPort: 8001
-    nodePort: 30001
+  - name: ui
+    port: 8002
+    targetPort: 8002
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -1199,7 +1382,7 @@ data:
                 <pre><code>kubectl apply -f C:\Users\mail2\kong-deploy.yml</code></pre>
             </div>
 
-            <h3>8.2: Verify Kong Deployment</h3>
+            <h3>10.2: Verify Kong Deployment</h3>
 
             <div class="command-box">
                 <strong>Check Kong Pods:</strong>
@@ -1211,53 +1394,36 @@ data:
                 <pre><code>kubectl get svc -n kong</code></pre>
             </div>
 
-            <h3>8.3: Set up Kong Admin API Access</h3>
+            <h3>10.3: Test Kong Installation via Ingress</h3>
 
             <div class="command-box">
-                <strong>Add Kong Admin to hosts file:</strong>
-                <pre><code># Add this line to C:\Windows\System32\drivers\etc\hosts
-127.0.0.1 kong-admin.local</code></pre>
-            </div>
-
-            <h3>8.4: Port Forward Kong Services</h3>
-
-            <div class="command-box">
-                <strong>Open a PowerShell window and run:</strong>
-                <pre><code>kubectl port-forward -n kong service/kong-proxy 8000:8000</code></pre>
-            </div>
-
-            <div class="command-box">
-                <strong>Open another PowerShell window for Admin API:</strong>
-                <pre><code>kubectl port-forward -n kong service/kong-proxy 8001</code></pre>
-            </div>
-
-            <div class="info-box">
-                <strong>Kong Access Points:</strong>
-                <ul>
-                    <li><strong>Kong Gateway:</strong> http://localhost:8000</li>
-                    <li><strong>Kong Admin API:</strong> http://kong-admin.local</li>
-                    <li><strong>Direct Admin Access:</strong> http://localhost:8001</li>
-                </ul>
-            </div>
-
-            <h3>8.5: Test Kong Installation</h3>
-
-            <div class="command-box">
-                <strong>Test Kong Admin API:</strong>
+                <strong>Test Kong Admin API through Ingress:</strong>
                 <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/services" -Method GET</code></pre>
             </div>
 
             <div class="success-box">
                 <strong>Expected Output:</strong> Should return an empty services list <code>{"data":[],"next":null}</code>
             </div>
+
+            <div class="info-box">
+                <strong>No Port Forwarding Needed:</strong>
+                <ul>
+                    <li><strong>Kong Gateway:</strong> http://kong-proxy.local</li>
+                    <li><strong>Kong Admin API:</strong> http://kong-admin.local</li>
+                    <li><strong>Kong UI Dashboard:</strong> http://kong-ui.local</li>
+                    <li>All services accessible on standard HTTP port 80</li>
+                    <li>Nginx Ingress Controller handles routing</li>
+                </ul>
+            </div>
         </section>
 
-        <section id="section9">
-            <h2>Section 9: Configure Kong Routes</h2>
+        <!-- UPDATED SECTION: Kong Routes Configuration -->
+        <section id="section11">
+            <h2>Section 11: Configure Kong Routes</h2>
 
-            <h3>9.1: Configure Kong Using PowerShell</h3>
+            <h3>11.1: Configure Kong Using PowerShell</h3>
 
-            <p>Run these commands in PowerShell to set up Kong routing:</p>
+            <p>Run these commands in PowerShell to set up Kong routing (using the new domain):</p>
 
             <h4>Create API Service in Kong</h4>
             <div class="command-box">
@@ -1313,7 +1479,7 @@ data:
     } | ConvertTo-Json -Depth 4)</code></pre>
             </div>
 
-            <h3>9.2: Verify Kong Configuration</h3>
+            <h3>11.2: Verify Kong Configuration</h3>
 
             <div class="command-box">
                 <strong>Check Services:</strong>
@@ -1325,33 +1491,30 @@ data:
                 <pre><code>Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/routes" -Method GET</code></pre>
             </div>
 
-            <h3>9.3: Test Kong Routing</h3>
+            <h3>11.3: Test Kong Routing via New Domain</h3>
 
             <div class="command-box">
-                <strong>Test API endpoints through Kong:</strong>
-                <pre><code># Test Employee endpoint (with /api prefix)
-Invoke-RestMethod -Uri "http://localhost:8000/api/Employee/GetEmployees" -Method GET
+                <strong>Test API endpoints through Kong (using new domain):</strong>
+                <pre><code># Test Products endpoint (with /api prefix)
+Invoke-RestMethod -Uri "http://kong-proxy.local/api/Products" -Method GET
 
 # Test Health endpoint (without prefix)
-Invoke-RestMethod -Uri "http://localhost:8000/health" -Method GET
+Invoke-RestMethod -Uri "http://kong-proxy.local/health" -Method GET
 
 # Test WeatherForecast endpoint (without prefix)
-Invoke-RestMethod -Uri "http://localhost:8000/WeatherForecast" -Method GET
+Invoke-RestMethod -Uri "http://kong-proxy.local/WeatherForecast" -Method GET
 
 # Test Swagger UI
-Invoke-RestMethod -Uri "http://localhost:8000/swagger" -Method GET</code></pre>
+Invoke-RestMethod -Uri "http://kong-proxy.local/swagger/index.html" -Method GET
+
+# Test Kong Admin API
+Invoke-RestMethod -Uri "http://kong-admin.local/status" -Method GET
+
+# Test Kong UI
+Invoke-RestMethod -Uri "http://kong-ui.local" -Method GET</code></pre>
             </div>
 
-            <div class="info-box">
-                <strong>Kong Routing Strategy:</strong>
-                <ul>
-                    <li><strong>/api/*</strong> → Routes keep /api prefix (strip_path = false)</li>
-                    <li><strong>/health, /WeatherForecast</strong> → Routes without prefix (strip_path = false)</li>
-                    <li><strong>/swagger/*</strong> → Routes to Swagger UI documentation</li>
-                </ul>
-            </div>
-
-            <h3>9.4: Optional - Add CORS Plugin</h3>
+            <h3>11.4: Optional - Add CORS Plugin</h3>
 
             <div class="command-box">
                 <strong>Enable CORS for API:</strong>
@@ -1371,10 +1534,11 @@ Invoke-RestMethod -Uri "http://localhost:8000/swagger" -Method GET</code></pre>
             </div>
         </section>
 
-        <section id="section10">
-            <h2>Section 10: Accessing Your Services</h2>
+        <!-- UPDATED SECTION: Accessing Services -->
+        <section id="section12">
+            <h2>Section 12: Accessing Your Services</h2>
 
-            <h3>10.1: API Endpoints Through Kong Gateway</h3>
+            <h3>12.1: API Endpoints Through Kong Gateway</h3>
 
             <table>
                 <thead>
@@ -1387,33 +1551,67 @@ Invoke-RestMethod -Uri "http://localhost:8000/swagger" -Method GET</code></pre>
                 <tbody>
                     <tr>
                         <td>Swagger UI</td>
-                        <td>http://localhost:8000/swagger/index.html</td>
+                        <td>http://kong-proxy.local/swagger/index.html</td>
                         <td>API documentation and testing</td>
                     </tr>
                     <tr>
                         <td>Weather Forecast</td>
-                        <td>http://localhost:8000/WeatherForecast</td>
+                        <td>http://kong-proxy.local/WeatherForecast</td>
                         <td>Sample endpoint</td>
                     </tr>
                     <tr>
                         <td>Products (All)</td>
-                        <td>http://localhost:8000/api/Products</td>
+                        <td>http://kong-proxy.local/api/Products</td>
                         <td>Get all products from database</td>
                     </tr>
                     <tr>
                         <td>Product (Single)</td>
-                        <td>http://localhost:8000/api/Products/1</td>
+                        <td>http://kong-proxy.local/api/Products/1</td>
                         <td>Get product by ID</td>
                     </tr>
                     <tr>
                         <td>Health Check</td>
-                        <td>http://localhost:8000/health</td>
+                        <td>http://kong-proxy.local/health</td>
                         <td>API health status</td>
                     </tr>
                 </tbody>
             </table>
 
-            <h3>10.2: SQL Server Access</h3>
+            <h3>12.2: Kong Management Endpoints</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>URL</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Kong Gateway</td>
+                        <td>http://kong-proxy.local</td>
+                        <td>Main API gateway</td>
+                    </tr>
+                    <tr>
+                        <td>Kong Admin API</td>
+                        <td>http://kong-admin.local</td>
+                        <td>Configuration and management</td>
+                    </tr>
+                    <tr>
+                        <td>Kong UI Dashboard</td>
+                        <td>http://kong-ui.local</td>
+                        <td>Web-based management interface</td>
+                    </tr>
+                    <tr>
+                        <td>Kong Status</td>
+                        <td>http://kong-admin.local/status</td>
+                        <td>Kong health and metrics</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>12.3: SQL Server Access</h3>
 
             <h4>From SQL Server Management Studio (SSMS):</h4>
             <ul>
@@ -1428,36 +1626,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/swagger" -Method GET</code></pre>
             <pre><code>USE SampleDB;
 SELECT * FROM Products;</code></pre>
 
-            <h3>10.3: Kong Admin Endpoints</h3>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Service</th>
-                        <th>URL</th>
-                        <th>Purpose</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Kong Gateway</td>
-                        <td>http://localhost:8000</td>
-                        <td>Main API gateway</td>
-                    </tr>
-                    <tr>
-                        <td>Kong Admin API</td>
-                        <td>http://kong-admin.local</td>
-                        <td>Configuration and management</td>
-                    </tr>
-                    <tr>
-                        <td>Kong Status</td>
-                        <td>http://kong-admin.local/status</td>
-                        <td>Kong health and metrics</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h3>10.4: Other URLs</h3>
+            <h3>12.4: Other URLs</h3>
 
             <table>
                 <thead>
@@ -1483,27 +1652,34 @@ SELECT * FROM Products;</code></pre>
                         <td>Direct API Access</td>
                         <td>http://localhost:7080</td>
                     </tr>
+                    <tr>
+                        <td>Nginx Ingress Status</td>
+                        <td>http://localhost/ (via Nginx)</td>
+                    </tr>
                 </tbody>
             </table>
 
-            <h3>10.5: Complete Architecture Flow</h3>
+            <h3>12.5: Complete Architecture Flow</h3>
 
             <div class="info-box">
-                <strong>Request Flow:</strong>
+                <strong>Request Flow (Improved with Ingress):</strong>
                 <ol>
-                    <li>Client request → http://localhost:8000/api/Products</li>
-                    <li>Kong Gateway receives request</li>
+                    <li>Client request → http://kong-proxy.local/api/Products</li>
+                    <li>DNS resolves kong-proxy.local to 127.0.0.1 (hosts file)</li>
+                    <li>Nginx Ingress Controller receives request on port 80</li>
+                    <li>Nginx routes to kong-proxy service based on host header</li>
+                    <li>Kong Gateway receives request on port 8000</li>
                     <li>Kong routes to integratedapi-service based on path</li>
                     <li>Request forwarded to http://integratedapi-service:7080/api/Products</li>
                     <li>.NET API processes request</li>
                     <li>API connects to SQL Server at sqlserver-service:1433</li>
-                    <li>Response flows back through Kong to client</li>
+                    <li>Response flows back through Kong → Nginx → Client</li>
                 </ol>
             </div>
 
-            <h3>10.6: Making Code Changes</h3>
+            <h3>12.6: Making Code Changes</h3>
 
-            <p>The CI/CD pipeline automatically deploys changes through Kong:</p>
+            <p>The CI/CD pipeline automatically deploys changes through the new architecture:</p>
             <ol>
                 <li>Edit code in Visual Studio</li>
                 <li>Commit changes: <code>git add . && git commit -m "description"</code></li>
@@ -1511,12 +1687,49 @@ SELECT * FROM Products;</code></pre>
                 <li>Jenkins detects change within 1 minute</li>
                 <li>Automatic build and deployment occurs</li>
                 <li>Kong automatically routes to new API version</li>
-                <li>Refresh API endpoints to see changes</li>
+                <li>Access updated API at: http://kong-proxy.local/swagger/index.html</li>
             </ol>
+
+            <div class="success-box">
+                <strong>Benefits of New Architecture:</strong>
+                <ul>
+                    <li>No port forwarding required</li>
+                    <li>Clean, production-like URLs</li>
+                    <li>Standard HTTP port 80 for all services</li>
+                    <li>Better separation of concerns with Nginx Ingress</li>
+                    <li>Easier to scale and manage</li>
+                </ul>
+            </div>
         </section>
 
         <section id="troubleshooting">
             <h2>Troubleshooting Guide</h2>
+
+            <h3>Nginx Ingress Issues</h3>
+
+            <h4>Issue 1: Ingress Controller Not Starting</h4>
+            <div class="command-box">
+                <strong>Check Ingress Pods:</strong>
+                <pre><code>kubectl get pods -n ingress-nginx
+kubectl describe pod -n ingress-nginx ingress-nginx-controller-xxxx</code></pre>
+            </div>
+            <p><strong>Solution:</strong> Wait 2-3 minutes for pods to start, check Docker Desktop resources</p>
+
+            <h4>Issue 2: Services Not Accessible via Domain Names</h4>
+            <div class="command-box">
+                <strong>Check Hosts File:</strong>
+                <pre><code>ping kong-proxy.local
+ping kong-admin.local</code></pre>
+            </div>
+            <p><strong>Solution:</strong> Ensure hosts file entries are correct and Notepad was run as Administrator</p>
+
+            <h4>Issue 3: Ingress Rules Not Working</h4>
+            <div class="command-box">
+                <strong>Check Ingress Resource:</strong>
+                <pre><code>kubectl get ingress -n kong
+kubectl describe ingress kong-ingress -n kong</code></pre>
+            </div>
+            <p><strong>Solution:</strong> Verify ingress configuration matches service names and ports</p>
 
             <h3>Kong-Specific Issues</h3>
 
@@ -1533,14 +1746,6 @@ SELECT * FROM Products;</code></pre>
                 <pre><code>kubectl run -n kong dns-test --image=curlimages/curl --rm -it --restart=Never -- nslookup integratedapi-service.default.svc.cluster.local</code></pre>
             </div>
             <p><strong>Solution:</strong> Use full DNS names in Kong service configuration</p>
-
-            <h4>Issue 3: Kong Admin API Not Accessible</h4>
-            <div class="command-box">
-                <strong>Check Kong Pods:</strong>
-                <pre><code>kubectl get pods -n kong
-kubectl logs -n kong deployment/kong</code></pre>
-            </div>
-            <p><strong>Solution:</strong> Ensure both port-forward commands are running</p>
 
             <h3>General Issues</h3>
 
@@ -1577,37 +1782,6 @@ kubectl describe pod -l app=sqlserver</code></pre>
                 </li>
             </ul>
 
-            <h4>Issue 3: Jenkins Build Fails - Docker Access</h4>
-            <p><strong>Verify Docker Access:</strong></p>
-            <ol>
-                <li>Manage Jenkins → Script Console</li>
-                <li>Run: <code>"docker --version".execute().text</code></li>
-            </ol>
-            <p><strong>If fails, add Docker to PATH:</strong></p>
-            <ol>
-                <li>System Properties → Environment Variables</li>
-                <li>Edit PATH, add: <code>C:\Program Files\Docker\Docker\resources\bin</code></li>
-                <li>Restart Jenkins</li>
-            </ol>
-
-            <h4>Issue 4: Pod CrashLoopBackOff</h4>
-            <div class="command-box">
-                <strong>Check Logs:</strong>
-                <pre><code>kubectl logs -l app=somerubbishapi</code></pre>
-            </div>
-            <p><strong>Common Causes:</strong></p>
-            <ul>
-                <li>HTTPS redirection not disabled in Program.cs</li>
-                <li>Port mismatch (should be 7080)</li>
-                <li>Database connection error</li>
-            </ul>
-            <p><strong>Solutions:</strong></p>
-            <ul>
-                <li>Verify <code>app.UseHttpsRedirection();</code> is commented</li>
-                <li>Check all port references are 7080</li>
-                <li>Verify SQL Server is running and accessible</li>
-            </ul>
-
             <h3>General Debugging Commands</h3>
             <table>
                 <thead>
@@ -1623,39 +1797,35 @@ kubectl describe pod -l app=sqlserver</code></pre>
                     </tr>
                     <tr>
                         <td>View all services</td>
-                        <td><code>kubectl get svc</code></td>
+                        <td><code>kubectl get svc --all-namespaces</code></td>
+                    </tr>
+                    <tr>
+                        <td>View Nginx ingress pods</td>
+                        <td><code>kubectl get pods -n ingress-nginx</code></td>
                     </tr>
                     <tr>
                         <td>View Kong services</td>
                         <td><code>kubectl get svc -n kong</code></td>
                     </tr>
                     <tr>
-                        <td>Check Kong routes</td>
-                        <td><code>Invoke-RestMethod -Uri "http://kong-admin.local/routes" -Method GET</code></td>
+                        <td>View ingress resources</td>
+                        <td><code>kubectl get ingress --all-namespaces</code></td>
+                    </tr>
+                    <tr>
+                        <td>Test Kong Admin API</td>
+                        <td><code>Invoke-RestMethod -Uri "http://kong-admin.local/status" -Method GET</code></td>
                     </tr>
                     <tr>
                         <td>Test API through Kong</td>
-                        <td><code>Invoke-RestMethod -Uri "http://localhost:8000/health" -Method GET</code></td>
+                        <td><code>Invoke-RestMethod -Uri "http://kong-proxy.local/health" -Method GET</code></pre></td>
+                    </tr>
+                    <tr>
+                        <td>View Nginx logs</td>
+                        <td><code>kubectl logs -n ingress-nginx deployment/ingress-nginx-controller</code></td>
                     </tr>
                     <tr>
                         <td>View Kong logs</td>
                         <td><code>kubectl logs -n kong deployment/kong</code></td>
-                    </tr>
-                    <tr>
-                        <td>View pod logs</td>
-                        <td><code>kubectl logs &lt;pod-name&gt;</code></td>
-                    </tr>
-                    <tr>
-                        <td>Describe pod</td>
-                        <td><code>kubectl describe pod &lt;pod-name&gt;</code></td>
-                    </tr>
-                    <tr>
-                        <td>Restart deployment</td>
-                        <td><code>kubectl rollout restart deployment/&lt;name&gt;</code></td>
-                    </tr>
-                    <tr>
-                        <td>View events</td>
-                        <td><code>kubectl get events --sort-by=.metadata.creationTimestamp</code></td>
                     </tr>
                 </tbody>
             </table>
@@ -1664,30 +1834,61 @@ kubectl describe pod -l app=sqlserver</code></pre>
         <section id="appendix">
             <h2>Appendix: Configuration Files</h2>
 
-            <h3>Kong Configuration Reference</h3>
-            <pre><code># Service Definition
-{
-    "name": "integratedapi-service",
-    "url": "http://integratedapi-service.default.svc.cluster.local:7080"
-}
+            <h3>Kong Ingress Configuration</h3>
+            <pre><code>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-ingress
+  namespace: kong
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: "kong-proxy.local"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-proxy
+            port:
+              number: 8000
+  - host: "kong-admin.local"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-proxy
+            port:
+              number: 8001
+  - host: "kong-ui.local"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-proxy
+            port:
+              number: 8002</code></pre>
 
-# Route Configuration for API endpoints
-{
-    "name": "integratedapi-with-prefix-route",
-    "paths": ["/api"],
-    "strip_path": false,
-    "preserve_host": true,
-    "path_handling": "v1"
-}
-
-# Route Configuration for root endpoints  
-{
-    "name": "integratedapi-no-prefix-route",
-    "paths": ["/health", "/WeatherForecast"],
-    "strip_path": false,
-    "preserve_host": true,
-    "path_handling": "v1"
-}</code></pre>
+            <h3>Windows Hosts File Configuration</h3>
+            <pre><code># Kong Services
+127.0.0.1 kong-proxy.local
+127.0.0.1 kong-admin.local
+127.0.0.1 kong-ui.local
+# Added by Docker Desktop
+192.168.1.11 host.docker.internal
+192.168.1.11 gateway.docker.internal
+# To allow the same kube context to work on the host and the container:
+127.0.0.1 kubernetes.docker.internal
+# Add prometheus.local
+127.0.0.1 prometheus.local</code></pre>
 
             <h3>PowerShell Kong Management Commands</h3>
             <pre><code># Create service
@@ -1701,13 +1902,6 @@ Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service" 
 
 # Add CORS plugin
 Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/plugins" -Method POST -Body $corsBody</code></pre>
-
-            <h3>Connection Strings Reference</h3>
-            <h4>For Kubernetes Deployment (backend-deploy.yml):</h4>
-            <pre><code>Server=sqlserver-service,1433;Database=SampleDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;</code></pre>
-
-            <h4>For Local Development (appsettings.json):</h4>
-            <pre><code>Server=localhost,1433;Database=SampleDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;</code></pre>
 
             <h3>Important File Locations</h3>
             <table>
@@ -1725,82 +1919,50 @@ Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/p
                         <td>Kong deployment to Kubernetes</td>
                     </tr>
                     <tr>
+                        <td>kong-ingress.yml</td>
+                        <td>C:\Users\mail2\kong-ingress.yml</td>
+                        <td>Kong ingress configuration</td>
+                    </tr>
+                    <tr>
+                        <td>Windows Hosts File</td>
+                        <td>C:\Windows\System32\drivers\etc\hosts</td>
+                        <td>Local DNS resolution</td>
+                    </tr>
+                    <tr>
                         <td>Project Root</td>
                         <td>C:\Users\mail2\source\repos\SomeRubbishAPI</td>
                         <td>Main project directory</td>
                     </tr>
                     <tr>
-                        <td>Dockerfile</td>
-                        <td>SomeRubbishAPI\Dockerfile</td>
-                        <td>API Docker configuration</td>
-                    </tr>
-                    <tr>
-                        <td>Jenkinsfile</td>
-                        <td>Root\Jenkinsfile</td>
-                        <td>Jenkins pipeline script</td>
-                    </tr>
-                    <tr>
-                        <td>API Deployment</td>
+                        <td>backend-deploy.yml</td>
                         <td>Root\backend-deploy.yml</td>
                         <td>API Kubernetes deployment</td>
-                    </tr>
-                    <tr>
-                        <td>SQL Deployment</td>
-                        <td>Root\sqlserver-deploy.yml</td>
-                        <td>SQL Server Kubernetes deployment</td>
-                    </tr>
-                    <tr>
-                        <td>SQL Initialization</td>
-                        <td>Root\sqlserver-init-job.yml</td>
-                        <td>Database initialization job</td>
-                    </tr>
-                    <tr>
-                        <td>Kubeconfig</td>
-                        <td>C:\Users\mail2\.kube\config</td>
-                        <td>Kubernetes configuration</td>
                     </tr>
                 </tbody>
             </table>
 
             <h3>Quick Reference Commands</h3>
-            <pre><code># Kubernetes commands
-kubectl get all
-kubectl get pods
-kubectl get deployments
-kubectl get services
-kubectl logs -l app=somerubbishapi
-kubectl logs -l app=sqlserver
-kubectl rollout restart deployment/somerubbishapi-deployment
+            <pre><code># Deploy Nginx Ingress Controller
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
 
-# Docker commands
-docker images
-docker ps
-docker build -t karthiknat/somerubbishapi:latest .
-docker push karthiknat/somerubbishapi:latest
+# Apply Kong Ingress
+kubectl apply -f C:\Users\mail2\kong-ingress.yml
 
-# Git commands
-git status
-git add .
-git commit -m "description"
-git push origin main
-git pull origin main</code></pre>
+# Test Services
+Invoke-RestMethod -Uri "http://kong-proxy.local/api/Products" -Method GET
+Invoke-RestMethod -Uri "http://kong-admin.local/services" -Method GET
+Invoke-RestMethod -Uri "http://kong-ui.local" -Method GET
 
-            <h3>Sample Database Schema</h3>
-            <pre><code>CREATE TABLE Products (
-    Id INT PRIMARY KEY IDENTITY(1,1),
-    Name NVARCHAR(100) NOT NULL,
-    Price DECIMAL(18,2) NOT NULL,
-    Description NVARCHAR(500)
-);
-
--- Sample data (5 records pre-loaded)
--- Laptop, Mouse, Keyboard, Monitor, Headphones</code></pre>
+# View Resources
+kubectl get pods --all-namespaces
+kubectl get svc --all-namespaces
+kubectl get ingress --all-namespaces</code></pre>
         </section>
 
         <footer style="margin-top: 50px; padding-top: 20px; border-top: 2px solid #e0e0e0; text-align: center; color: #666;">
-            <p><strong>CI/CD Setup Guide - Version 3.1</strong></p>
-            <p>Complete deployment with Jenkins, Kubernetes, Kong API Gateway, and SQL Server</p>
-            <p>Generated on October 12, 2025 | Merged and Updated Version</p>
+            <p><strong>CI/CD Setup Guide - Version 3.2</strong></p>
+            <p>Complete deployment with Jenkins, Kubernetes, Nginx Ingress, Kong API Gateway, and SQL Server</p>
+            <p>Generated on October 12, 2025 | Updated with Nginx Ingress and Local DNS</p>
         </footer>
     </div>
 </body>
