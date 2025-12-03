@@ -1,0 +1,6 @@
+PS C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI> kubectl create deployment load-test --image=curlimages/curl:latest -- /bin/sh -c "while true; do curl -s http://integratedapi-service:7080/health; done"
+deployment.apps/load-test created
+PS C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI> kubectl delete deployment load-test
+deployment.apps "load-test" deleted from default namespace
+PS C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI> kubectl delete pod load-test-bf84f86b9-v6v2s
+pod "load-test-bf84f86b9-v6v2s" deleted from default namespace
