@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: integratedapi-deployment
+  namespace: default
   labels:
     app: integratedapi
 spec:
@@ -20,41 +21,47 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 7080
+              name: http
+              protocol: TCP
           resources:
             requests:
-                memory: "256Mi"
-                cpu: "100m"
+              memory: "256Mi"
+              cpu: "100m"
             limits:
-                memory: "512Mi"
-                cpu: "500m"
+              memory: "512Mi"
+              cpu: "500m"
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: "Production"
-
-            # Connection string matches your SQL Server service definition
             - name: ConnectionStrings__DefaultConnection
               value: "Server=sqlserver-service,1433;Database=ProjectDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
-
           readinessProbe:
             httpGet:
               path: /health
               port: 7080
+              scheme: HTTP
             initialDelaySeconds: 10
             periodSeconds: 10
-
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /health
               port: 7080
+              scheme: HTTP
             initialDelaySeconds: 30
             periodSeconds: 20
-
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
       restartPolicy: Always
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: integratedapi-service
+  namespace: default
   labels:
     app: integratedapi
 spec:
@@ -66,3 +73,4 @@ spec:
       port: 7080
       targetPort: 7080
       nodePort: 30080
+      name: http
