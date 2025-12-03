@@ -4,3 +4,9 @@ PS C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI> kubectl delete deplo
 deployment.apps "load-test" deleted from default namespace
 PS C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI> kubectl delete pod load-test-bf84f86b9-v6v2s
 pod "load-test-bf84f86b9-v6v2s" deleted from default namespace
+
+
+
+In a separate window, run the below to watch the pods being auto scaled
+
+PS C:\Users\mail2> kubectl get hpa integratedapi-hpa --watch
