@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kubernetes HPA Setup Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        
+        header {
+            border-bottom: 4px solid #0066cc;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #0066cc;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+        
+        .meta-info {
+            display: flex;
+            gap: 30px;
+            color: #666;
+            font-size: 0.9em;
+            flex-wrap: wrap;
+        }
+        
+        .meta-info span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        h2 {
+            color: #0066cc;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        h3 {
+            color: #333;
+            font-size: 1.4em;
+            margin-top: 25px;
+            margin-bottom: 12px;
+        }
+        
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+        }
+        
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        
+        pre {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+        
+        .info-box {
+            background-color: #e7f3ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .command-box {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .command-box strong {
+            display: block;
+            margin-bottom: 10px;
+            color: #0066cc;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.95em;
+        }
+        
+        th {
+            background-color: #0066cc;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .checklist {
+            list-style: none;
+            margin-left: 0;
+        }
+        
+        .checklist li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .architecture-diagram {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        
+        .toc {
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 5px;
+            margin: 30px 0;
+        }
+        
+        .toc h2 {
+            margin-top: 0;
+        }
+        
+        .toc ul {
+            margin-left: 20px;
+        }
+        
+        .toc a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        .file-path {
+            background-color: #fff8e1;
+            padding: 8px 12px;
+            border-left: 3px solid #ffc107;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+                padding: 20px;
+            }
+            
+            pre {
+                page-break-inside: avoid;
+            }
+            
+            h2 {
+                page-break-after: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>HPA Setup for IntegratedAPI with Metrics Server (Docker Desktop Kubernetes)</h1>
+        <p class="subtitle">
+            Step-by-step guide to install Metrics Server, configure Horizontal Pod Autoscaler (HPA) for your
+            <code>integratedapi-deployment</code>, and validate autoscaling using a curl-based load test.
+        </p>
+        <div class="meta-info">
+            <span>Docker Desktop Kubernetes</span>
+            <span>Metrics Server</span>
+            <span>CPU & Memory Autoscaling</span>
+            <span>IntegratedAPI</span>
+        </div>
+    </header>
+
+    <h2>Prerequisites</h2>
+    <p>
+        Ensure the following components are installed and your <code>integratedapi-deployment</code> is already running in the cluster.
+    </p>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Software</th>
+            <th>Version</th>
+            <th>Verification Command</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>Docker Desktop</td>
+            <td>4.0+</td>
+            <td><code>docker --version</code></td>
+        </tr>
+        <tr>
+            <td>Kubernetes</td>
+            <td>1.24+</td>
+            <td><code>kubectl version</code></td>
+        </tr>
+        <tr>
+            <td>kubectl</td>
+            <td>1.24+</td>
+            <td><code>kubectl version --client</code></td>
+        </tr>
+        <tr>
+            <td>IntegratedAPI Deployment</td>
+            <td>Running</td>
+            <td><code>kubectl get deployment integratedapi-deployment</code></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <pre><code class="language-bash">
+# Check if Kubernetes is running
+kubectl cluster-info
+
+# Check current deployments
+kubectl get deployments
+
+# Check if Metrics Server is already installed
+kubectl get pods -n kube-system | grep metrics-server
+
+# Check if HPA already exists
+kubectl get hpa
+    </code></pre>
+
+    <h2>Architecture Overview</h2>
+    <div class="architecture-diagram">
+┌─────────────────────────────────────────────────────────────┐
+│                     Kubernetes Cluster                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐     ┌──────────────┐     ┌──────────────┐ │
+│  │             │     │              │     │              │ │
+│  │     HPA     │────▶│   Metrics    │────▶│  Integrated  │ │
+│  │ Controller  │     │   Server     │     │    API       │ │
+│  │             │     │              │     │    Pods      │ │
+│  └─────────────┘     └──────────────┘     └──────────────┘ │
+│          │                     │                          │
+│          │                     ▼                          │
+│          │            ┌──────────────┐                    │
+│          │            │              │                    │
+│          └───────────▶│   Metrics    │                    │
+│                       │  Collector   │                    │
+│                       └──────────────┘                    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+    </div>
+
+    <h2>Key Components</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Component</th>
+            <th>Purpose</th>
+            <th>Namespace</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>Metrics Server</td>
+            <td>Collects CPU/Memory metrics from pods/nodes</td>
+            <td><code>kube-system</code></td>
+        </tr>
+        <tr>
+            <td>HPA Controller</td>
+            <td>Monitors metrics and adjusts replica counts</td>
+            <td><code>kube-system</code></td>
+        </tr>
+        <tr>
+            <td>integratedapi-hpa</td>
+            <td>Custom HPA for your IntegratedAPI app</td>
+            <td><code>default</code></td>
+        </tr>
+        <tr>
+            <td>RBAC Resources</td>
+            <td>Permissions for metrics collection</td>
+            <td><code>kube-system</code></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Install Metrics Server</h2>
+    <p>
+        Use the following full manifest as <code>metrics-server-fixed.yaml</code> and apply it to your cluster.
+    </p>
+
+    <div class="file-path">metrics-server-fixed.yaml</div>
+    <pre><code class="language-yaml">
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:metrics-server
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "nodes/stats", "nodes/metrics", "nodes/proxy", "pods", "services", "configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes/stats"]
+    verbs: ["get"]
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:metrics-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:metrics-server
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:aggregated-metrics-reader
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+rules:
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: metrics-server-auth-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    kubernetes.io/name: "Metrics-server"
+    kubernetes.io/cluster-service: "true"
+spec:
+  selector:
+    k8s-app: metrics-server
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: https
+      name: https
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-server
+  namespace: kube-system
+  labels:
+    k8s-app: metrics-server
+spec:
+  selector:
+    matchLabels:
+      k8s-app: metrics-server
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        k8s-app: metrics-server
+    spec:
+      serviceAccountName: metrics-server
+      priorityClassName: system-cluster-critical
+      volumes:
+        - name: tmp-dir
+          emptyDir: {}
+      containers:
+        - name: metrics-server
+          image: registry.k8s.io/metrics-server/metrics-server:v0.7.2
+          imagePullPolicy: IfNotPresent
+          args:
+            - --cert-dir=/tmp
+            - --secure-port=4443
+            - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+            - --kubelet-use-node-status-port
+            - --kubelet-insecure-tls
+            - --metric-resolution=15s
+          ports:
+            - name: https
+              containerPort: 4443
+              protocol: TCP
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /livez
+              port: https
+              scheme: HTTPS
+            periodSeconds: 10
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /readyz
+              port: https
+              scheme: HTTPS
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 200Mi
+            limits:
+              cpu: 200m
+              memory: 400Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta1.metrics.k8s.io
+  labels:
+    k8s-app: metrics-server
+spec:
+  service:
+    name: metrics-server
+    namespace: kube-system
+  group: metrics.k8s.io
+  version: v1beta1
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 100
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1.metrics.k8s.io
+  labels:
+    k8s-app: metrics-server
+spec:
+  service:
+    name: metrics-server
+    namespace: kube-system
+  group: metrics.k8s.io
+  version: v1
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 100
+    </code></pre>
+
+    <pre><code class="language-bash">
+# Apply the configuration
+kubectl apply -f metrics-server-fixed.yaml
+    </code></pre>
+
+    <h3>Verify Metrics Server</h3>
+    <pre><code class="language-bash">
+# Check if pod is running
+kubectl get pods -n kube-system -l k8s-app=metrics-server
+
+# Check pod logs
+kubectl logs -n kube-system deployment/metrics-server
+
+# Verify metrics API is available
+kubectl get --raw "/apis/metrics.k8s.io/v1beta1/nodes"
+
+# Check API service status
+kubectl get apiservice v1beta1.metrics.k8s.io
+    </code></pre>
+
+    <pre><code class="language-bash">
+# Get node metrics
+kubectl top nodes
+
+# Get pod metrics (wait 1-2 minutes for initial collection)
+kubectl top pods --all-namespaces
+
+# If you see "Metrics not available yet", wait and try again
+# It takes 1-2 minutes for initial metrics collection
+    </code></pre>
+
+    <h2>Verify IntegratedAPI Deployment</h2>
+    <pre><code class="language-bash">
+# Check deployment status
+kubectl get deployment integratedapi-deployment
+
+# Check service
+kubectl get service integratedapi-service
+
+# Test the API endpoint (from local machine)
+kubectl port-forward svc/integratedapi-service 7080:7080
+
+# Then in another terminal or browser:
+curl http://localhost:7080/health
+    </code></pre>
+
+    <h2>Configure HPA for IntegratedAPI</h2>
+    <p>
+        Use the following HPA manifest as <code>integratedapi-hpa-fixed.yml</code> to scale based on CPU and memory utilization.
+    </p>
+
+    <div class="file-path">integratedapi-hpa-fixed.yml</div>
+    <pre><code class="language-yaml">
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: integratedapi-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: integratedapi-deployment
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+      selectPolicy: Max
+    </code></pre>
+
+    <pre><code class="language-bash">
+# Apply the HPA configuration
+kubectl apply -f integratedapi-hpa-fixed.yml
+    </code></pre>
+
+    <h3>Inspect HPA</h3>
+    <pre><code class="language-bash">
+# Get HPA details
+kubectl get hpa integratedapi-hpa
+
+# Describe HPA for detailed information
+kubectl describe hpa integratedapi-hpa
+
+# Watch HPA in real-time
+kubectl get hpa integratedapi-hpa --watch
+    </code></pre>
+
+    <pre><code class="language-text">
+NAME               REFERENCE                              TARGETS          MINPODS   MAXPODS   REPLICAS   AGE
+integratedapi-hpa  Deployment/integratedapi-deployment   0%/70%, 0%/80%   1         10        1          30s
+    </code></pre>
+
+    <h3>HPA Settings Explained</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>Setting</th>
+            <th>Value</th>
+            <th>Explanation</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>scaleTargetRef</td>
+            <td><code>integratedapi-deployment</code></td>
+            <td>Deployment to autoscale</td>
+        </tr>
+        <tr>
+            <td>minReplicas</td>
+            <td>1</td>
+            <td>Minimum pods to keep running</td>
+        </tr>
+        <tr>
+            <td>maxReplicas</td>
+            <td>10</td>
+            <td>Maximum pods during scaling</td>
+        </tr>
+        <tr>
+            <td>CPU Target</td>
+            <td>70% utilization</td>
+            <td>Scale when CPU usage exceeds 70%</td>
+        </tr>
+        <tr>
+            <td>Memory Target</td>
+            <td>80% utilization</td>
+            <td>Scale when memory usage exceeds 80%</td>
+        </tr>
+        <tr>
+            <td>scaleDown Stabilization</td>
+            <td>300 seconds</td>
+            <td>Wait 5 minutes before scaling down</td>
+        </tr>
+        <tr>
+            <td>scaleUp Stabilization</td>
+            <td>0 seconds</td>
+            <td>Scale up immediately when needed</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Load Testing to Trigger HPA</h2>
+    <p>
+        Use a curl-based deployment to generate continuous traffic to the IntegratedAPI service and observe autoscaling.
+    </p>
+
+    <h3>Basic Load Test Deployment</h3>
+    <pre><code class="language-powershell">
+# Create load test deployment that continuously calls the API
+kubectl create deployment load-test \
+  --image=curlimages/curl:latest \
+  -- /bin/sh -c "while true; do curl -s http://integratedapi-service:7080/health; done"
+
+# Delete the load test deployment when done
+kubectl delete deployment load-test
+
+# If any load-test pod remains, delete it explicitly
+kubectl delete pod load-test-bf84f86b9-v6v2s
+
+# In a separate window, watch the HPA scaling behavior
+kubectl get hpa integratedapi-hpa --watch
+    </code></pre>
+
+    <h3>Watch Scaling Behavior</h3>
+    <pre><code class="language-bash">
+# Terminal 1: Watch HPA
+kubectl get hpa integratedapi-hpa --watch
+
+# Terminal 2: Watch pods
+kubectl get pods -l app=integratedapi --watch
+
+# Terminal 3: Watch metrics
+kubectl top pods -l app=integratedapi --watch
+
+# Terminal 4: Watch deployment
+kubectl get deployment integratedapi-deployment --watch
+    </code></pre>
+
+    <h3>Increase Load / Aggressive Testing</h3>
+    <pre><code class="language-bash">
+# Increase load test replicas
+kubectl scale deployment load-test --replicas=5
+
+# Or create a more aggressive load test
+kubectl create deployment load-test-heavy \
+  --image=curlimages/curl:latest \
+  --replicas=10 \
+  -- /bin/sh -c "while true; do curl -s http://integratedapi-service:7080/health; sleep 0.1; done"
+    </code></pre>
+
+    <h3>Clean Up Load Test</h3>
+    <pre><code class="language-bash">
+# Delete load test deployments
+kubectl delete deployment load-test
+kubectl delete deployment load-test-heavy
+
+# Watch scaling down behavior
+kubectl get hpa integratedapi-hpa --watch
+kubectl get pods -l app=integratedapi --watch
+    </code></pre>
+
+    <h3>One-Time Load Burst</h3>
+    <pre><code class="language-bash">
+# One-time load burst from local shell (if port-forwarded)
+for i in {1..1000}; do
+  curl -s http://localhost:7080/health > /dev/null &
+done
+
+# Watch for scaling
+kubectl get hpa integratedapi-hpa --watch
+    </code></pre>
+
+    <h2>Advanced HPA Example (Optional)</h2>
+    <p>
+        Example HPA that combines CPU with a custom requests-per-second metric (requires custom metrics pipeline).
+    </p>
+
+    <pre><code class="language-yaml">
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: integratedapi-hpa-advanced
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: integratedapi-deployment
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: 100
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600 # Wait 10 minutes before scaling down
+      policies:
+        - type: Percent
+          value: 10 # Remove max 10% of pods at a time
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100 # Double pods if needed
+          periodSeconds: 60
+        - type: Pods
+          value: 4 # Or add 4 pods at once
+          periodSeconds: 60
+      selectPolicy: Max # Use the most aggressive policy
+    </code></pre>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Strategy</th>
+            <th>Use Case</th>
+            <th>Example Configuration</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>CPU-based</td>
+            <td>Compute-intensive applications</td>
+            <td>CPU > 70%</td>
+        </tr>
+        <tr>
+            <td>Memory-based</td>
+            <td>Memory-intensive applications</td>
+            <td>Memory > 80%</td>
+        </tr>
+        <tr>
+            <td>Custom metrics</td>
+            <td>Request-based scaling</td>
+            <td>RPS > 100</td>
+        </tr>
+        <tr>
+            <td>Multiple metrics</td>
+            <td>Complex applications</td>
+            <td>CPU + Memory + custom metrics</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Troubleshooting</h2>
+
+    <h3>Metrics Server Issues</h3>
+    <pre><code class="language-bash">
+# Check Metrics Server pod
+kubectl get pods -n kube-system -l k8s-app=metrics-server
+
+# Check logs
+kubectl logs -n kube-system deployment/metrics-server
+
+# Check API availability
+kubectl get apiservice v1beta1.metrics.k8s.io -o yaml
+
+# Reinstall Metrics Server
+kubectl delete -f metrics-server-fixed.yaml
+kubectl apply -f metrics-server-fixed.yaml
+    </code></pre>
+
+    <h3>Application Resource Issues</h3>
+    <pre><code class="language-bash">
+# Check if pods have resource requests
+kubectl describe deployment integratedapi-deployment
+
+# Check pod resource allocation
+kubectl describe pod -l app=integratedapi
+
+# Verify metrics
+kubectl top pods -l app=integratedapi
+    </code></pre>
+
+    <h3>HPA Not Scaling</h3>
+    <pre><code class="language-bash">
+# Check for errors
+kubectl describe hpa integratedapi-hpa
+
+# Check events
+kubectl get events --sort-by=.metadata.creationTimestamp
+
+# Verify deployment exists
+kubectl get deployment integratedapi-deployment
+    </code></pre>
+
+    <h3>Tune Stabilization Windows</h3>
+    <pre><code class="language-yaml">
+behavior:
+  scaleUp:
+    stabilizationWindowSeconds: 180 # Wait 3 minutes before scaling up
+  scaleDown:
+    stabilizationWindowSeconds: 600 # Wait 10 minutes before scaling down
+    </code></pre>
+
+    <pre><code class="language-bash">
+# Apply updated configuration
+kubectl apply -f integratedapi-hpa-fixed.yml
+    </code></pre>
+
+    <h2>Quick Reference</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Purpose</th>
+            <th>Command</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>Check HPA status</td>
+            <td><code>kubectl describe hpa integratedapi-hpa</code></td>
+        </tr>
+        <tr>
+            <td>Check pod metrics</td>
+            <td><code>kubectl top pods -l app=integratedapi</code></td>
+        </tr>
+        <tr>
+            <td>Check Metrics Server</td>
+            <td><code>kubectl logs -n kube-system -l k8s-app=metrics-server</code></td>
+        </tr>
+        <tr>
+            <td>Check API availability</td>
+            <td><code>kubectl get --raw "/apis/metrics.k8s.io/v1beta1/pods"</code></td>
+        </tr>
+        <tr>
+            <td>Check events for HPA</td>
+            <td><code>kubectl get events --field-selector involvedObject.name=integratedapi-hpa</code></td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Repository Layout Example</h2>
+    <pre><code class="language-text">
+hpa-setup/
+├── metrics-server-fixed.yaml      # Metrics Server installation
+├── integratedapi-hpa-fixed.yml    # HPA configuration
+├── load-test.yaml                 # (Optional) Load testing deployment
+└── README.md                      # Setup instructions
+    </code></pre>
+
+    <h2>End-to-End Commands</h2>
+    <pre><code class="language-bash">
+# Install Metrics Server
+kubectl apply -f metrics-server-fixed.yaml
+
+# Install HPA
+kubectl apply -f integratedapi-hpa-fixed.yml
+
+# Verify installation
+kubectl get pods -n kube-system -l k8s-app=metrics-server
+kubectl get hpa
+
+# Create load test
+kubectl create deployment load-test --image=curlimages/curl:latest -- /bin/sh -c "while true; do curl -s http://integratedapi-service:7080/health; done"
+
+# Monitor scaling
+kubectl get hpa integratedapi-hpa --watch
+kubectl get pods -l app=integratedapi --watch
+
+# Clean up load test
+kubectl delete deployment load-test
+
+# Additional checks
+kubectl logs -n kube-system deployment/metrics-server
+kubectl get --raw "/apis/metrics.k8s.io/v1beta1/nodes"
+kubectl describe hpa integratedapi-hpa
+kubectl top pods --all-namespaces
+    </code></pre>
+
+    <h2>Suggested Monitoring Loop</h2>
+    <pre><code class="language-bash">
+# Terminal 1: HPA status
+watch -n 5 'kubectl get hpa integratedapi-hpa'
+
+# Terminal 2: Pod status
+watch -n 5 'kubectl get pods -l app=integratedapi'
+
+# Terminal 3: Resource metrics
+watch -n 10 'kubectl top pods -l app=integratedapi'
+
+# Terminal 4: Events
+watch -n 5 'kubectl get events --sort-by=.metadata.creationTimestamp | tail -20'
+    </code></pre>
+
+    <div class="info-box">
+        <strong>Note:</strong> This guide assumes a single-node Docker Desktop Kubernetes cluster; for production clusters, harden Metrics Server TLS settings and adapt resource limits, namespaces, and RBAC according to your environment. [file:4]
+    </div>
+</div>
+</body>
+</html>
