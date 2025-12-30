@@ -29,18 +29,14 @@ namespace IntegratedAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"));
 
-                    b.Property<int?>("Productid")
-                        .HasColumnType("int");
-
                     b.Property<int>("product_id")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("product_id");
 
                     b.Property<float>("quantity")
                         .HasColumnType("real");
 
                     b.HasKey("id");
-
-                    b.HasIndex("Productid");
 
                     b.HasIndex("product_id");
 
@@ -95,13 +91,10 @@ namespace IntegratedAPI.Migrations
                 {
                     b.HasOne("IntegratedAPI.Models.product", "Product")
                         .WithMany()
-                        .HasForeignKey("Productid");
-
-                    b.HasOne("IntegratedAPI.Models.product", null)
-                        .WithMany()
                         .HasForeignKey("product_id")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("FK_cartItem_product_product_id");
 
                     b.Navigation("Product");
                 });

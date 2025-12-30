@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IntegratedAPI.Migrations
 {
     [DbContext(typeof(ProjectDbContext))]
-    [Migration("20251126103559_added cart")]
-    partial class addedcart
+    [Migration("20251228121015_initialmigration")]
+    partial class initialmigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -32,14 +32,16 @@ namespace IntegratedAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"));
 
-                    b.Property<string>("product_id")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("product_id")
+                        .HasColumnType("int")
+                        .HasColumnName("product_id");
 
                     b.Property<float>("quantity")
                         .HasColumnType("real");
 
                     b.HasKey("id");
+
+                    b.HasIndex("product_id");
 
                     b.ToTable("cartItem", (string)null);
                 });
@@ -86,6 +88,18 @@ namespace IntegratedAPI.Migrations
                     b.HasKey("id");
 
                     b.ToTable("product", (string)null);
+                });
+
+            modelBuilder.Entity("IntegratedAPI.Models.cartItem", b =>
+                {
+                    b.HasOne("IntegratedAPI.Models.product", "Product")
+                        .WithMany()
+                        .HasForeignKey("product_id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_cartItem_product_product_id");
+
+                    b.Navigation("Product");
                 });
 #pragma warning restore 612, 618
         }

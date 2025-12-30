@@ -1,11 +1,26 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Service
 metadata:
-  name: sqlserver-deployment
+  name: sqlserver-service
   labels:
     app: sqlserver
 spec:
-  replicas: 1  # Changed from 3 to 1 - SQL Server should be single instance
+  type: LoadBalancer
+  selector:
+    app: sqlserver
+  ports:
+  - protocol: TCP
+    port: 1433
+    targetPort: 1433
+    name: mssql
+---
+apiVersion: apps/v1
+kind: StatefulSet  # Fixed the spelling here
+metadata:
+  name: sqlserver
+spec:
+  serviceName: "sqlserver-service"
+  replicas: 1
   selector:
     matchLabels:
       app: sqlserver
@@ -34,36 +49,13 @@ spec:
             memory: "4Gi"
             cpu: "2000m"
         volumeMounts:
-        - name: sqlserver-storage
+        - name: mssql-data
           mountPath: /var/opt/mssql
-      volumes:
-      - name: sqlserver-storage
-        persistentVolumeClaim:
-          claimName: sqlserver-pvc
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: sqlserver-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: sqlserver-service
-  labels:
-    app: sqlserver
-spec:
-  type: LoadBalancer
-  selector:
-    app: sqlserver
-  ports:
-  - protocol: TCP
-    port: 1433
-    targetPort: 1433
-    name: mssql
+  volumeClaimTemplates:
+  - metadata:
+      name: mssql-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi

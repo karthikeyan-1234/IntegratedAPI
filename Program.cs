@@ -1,6 +1,9 @@
 ﻿using IntegratedAPI.Contexts;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
+using IntegratedAPI.Models.DTOs;
+
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
 using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +23,11 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddDbContext<ProjectDbContext>(opt =>
     opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
+
+builder.Services.AddOptions<StripeOptions>()
+    .Bind(builder.Configuration.GetSection("StripeOptions"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 // .NET 10 ENHANCEMENT: Comprehensive health checks
 builder.Services.AddHealthChecks()

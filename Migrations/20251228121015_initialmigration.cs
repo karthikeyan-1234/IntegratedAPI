@@ -5,7 +5,7 @@
 namespace IntegratedAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class newmigration : Migration
+    public partial class initialmigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -38,11 +38,39 @@ namespace IntegratedAPI.Migrations
                 {
                     table.PrimaryKey("PK_product", x => x.id);
                 });
+
+            migrationBuilder.CreateTable(
+                name: "cartItem",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    product_id = table.Column<int>(type: "int", nullable: false),
+                    quantity = table.Column<float>(type: "real", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_cartItem", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_cartItem_product_product_id",
+                        column: x => x.product_id,
+                        principalTable: "product",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_cartItem_product_id",
+                table: "cartItem",
+                column: "product_id");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "cartItem");
+
             migrationBuilder.DropTable(
                 name: "employee");
 
