@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>.NET API Monitoring with Prometheus & Grafana</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+            --code-bg: #f8f9fa;
+            --border-color: #dee2e6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border-left: 5px solid var(--secondary-color);
+        }
+        
+        .prerequisites-card {
+            border-left-color: var(--warning-color);
+        }
+        
+        .step-card {
+            border-left-color: var(--success-color);
+        }
+        
+        .troubleshooting-card {
+            border-left-color: var(--danger-color);
+        }
+        
+        h2 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--light-color);
+        }
+        
+        h3 {
+            color: var(--secondary-color);
+            margin: 1.5rem 0 0.5rem 0;
+        }
+        
+        .step-number {
+            display: inline-block;
+            background-color: var(--secondary-color);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .file-header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px 5px 0 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+        
+        .code-block {
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 5px 5px;
+            padding: 1rem;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+        
+        .yaml-key { color: #22863a; }
+        .yaml-value { color: #005cc5; }
+        .yaml-number { color: #005cc5; }
+        .yaml-string { color: #032f62; }
+        
+        .powershell-cmd { color: #d73a49; }
+        .powershell-comment { color: #6a737d; font-style: italic; }
+        
+        .note {
+            background-color: #e7f3ff;
+            border-left: 4px solid var(--secondary-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid var(--warning-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .success {
+            background-color: #d1e7dd;
+            border-left: 4px solid var(--success-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .checklist {
+            list-style-type: none;
+            margin: 1rem 0;
+        }
+        
+        .checklist li {
+            padding: 0.5rem 0;
+            padding-left: 2rem;
+            position: relative;
+        }
+        
+        .checklist li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success-color);
+            font-weight: bold;
+        }
+        
+        .problem {
+            background-color: #f8d7da;
+            border-left: 4px solid var(--danger-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .powershell-loop {
+            margin-top: 1rem;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .button {
+            display: inline-block;
+            padding: 0.8rem 1.5rem;
+            background-color: var(--secondary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .button:hover {
+            background-color: var(--primary-color);
+        }
+        
+        .button-print {
+            background-color: var(--dark-color);
+        }
+        
+        .button-download {
+            background-color: var(--success-color);
+        }
+        
+        @media print {
+            .button-container {
+                display: none;
+            }
+            
+            .note, .warning, .success, .problem {
+                break-inside: avoid;
+            }
+        }
+        
+        .copy-btn {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            float: right;
+        }
+        
+        .copy-btn:hover {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>.NET API Monitoring with Prometheus & Grafana</h1>
+        <p class="subtitle">Simple Step-by-Step Guide for Real-Time API Monitoring</p>
+    </header>
+    
+    <div class="button-container">
+        <button class="button button-print" onclick="window.print()">Print Guide</button>
+        <button class="button button-download" onclick="downloadHTML()">Download HTML</button>
+    </div>
+    
+    <div class="container">
+        <div class="card prerequisites-card">
+            <h2>📋 PREREQUISITES</h2>
+            <p>Ensure you have these running before starting:</p>
+            <div class="checklist">
+                <li>.NET API running in Visual Studio on <strong>https://localhost:7216</strong></li>
+                <li>Docker Desktop installed and running</li>
+                <li>PowerShell with Administrator privileges</li>
+            </div>
+            
+            <div class="warning">
+                <strong>Important:</strong> Make sure your .NET API is configured to expose Prometheus metrics at the <code>/metrics</code> endpoint. This typically requires adding the <code>prometheus-net.AspNetCore</code> NuGet package.
+            </div>
+        </div>
+        
+        <div class="card step-card">
+            <h2><span class="step-number">1</span> Create Folder Structure</h2>
+            <p>Open PowerShell as Administrator and run:</p>
+            
+            <div class="file-header">PowerShell Commands</div>
+            <div class="code-block">
+<span class="powershell-cmd">cd</span> C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI<br>
+<span class="powershell-cmd">mkdir</span> Prometheus-Grafana<br>
+<span class="powershell-cmd">cd</span> Prometheus-Grafana
+            </div>
+            <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Commands</button>
+            
+            <div class="note">
+                <strong>Note:</strong> Adjust the path according to your project location.
+            </div>
+        </div>
+        
+        <div class="card step-card">
+            <h2><span class="step-number">2</span> Create docker-compose.yml</h2>
+            <p>Create a new file named <code>docker-compose.yml</code> with the following content:</p>
+            
+            <div class="file-header">docker-compose.yml</div>
+            <div class="code-block" id="docker-compose-content">
+<span class="yaml-key">version</span>: <span class="yaml-string">'3.8'</span><br>
+<br>
+<span class="yaml-key">services</span>:<br>
+&nbsp;&nbsp;<span class="yaml-key">prometheus</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">image</span>: <span class="yaml-string">prom/prometheus:v2.48.0</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">container_name</span>: <span class="yaml-string">prometheus</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">volumes</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-string">./prometheus.yml:/etc/prometheus/prometheus.yml</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">ports</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-string">"9090:9090"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">extra_hosts</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-string">"host.docker.internal:host-gateway"</span><br>
+<br>
+&nbsp;&nbsp;<span class="yaml-key">grafana</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">image</span>: <span class="yaml-string">grafana/grafana:10.2.2</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">container_name</span>: <span class="yaml-string">grafana</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">environment</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-key">GF_SECURITY_ADMIN_PASSWORD</span>=<span class="yaml-string">admin</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">ports</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-string">"3000:3000"</span>
+            </div>
+            <button class="copy-btn" onclick="copyToClipboard(document.getElementById('docker-compose-content'))">Copy YAML</button>
+        </div>
+        
+        <div class="card step-card">
+            <h2><span class="step-number">3</span> Create prometheus.yml</h2>
+            <p>Create a new file named <code>prometheus.yml</code> with the following content:</p>
+            
+            <div class="file-header">prometheus.yml</div>
+            <div class="code-block" id="prometheus-content">
+<span class="yaml-key">global</span>:<br>
+&nbsp;&nbsp;<span class="yaml-key">scrape_interval</span>: <span class="yaml-string">15s</span><br>
+<br>
+<span class="yaml-key">scrape_configs</span>:<br>
+&nbsp;&nbsp;- <span class="yaml-key">job_name</span>: <span class="yaml-string">'dotnet-api'</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">scheme</span>: <span class="yaml-string">https</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">metrics_path</span>: <span class="yaml-string">'/metrics'</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">static_configs</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-key">targets</span>: [<span class="yaml-string">'host.docker.internal:7216'</span>]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">tls_config</span>:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">insecure_skip_verify</span>: <span class="yaml-string">true</span>
+            </div>
+            <button class="copy-btn" onclick="copyToClipboard(document.getElementById('prometheus-content'))">Copy YAML</button>
+            
+            <div class="note">
+                <strong>Note:</strong> The <code>insecure_skip_verify: true</code> setting is required because we're using a self-signed certificate from localhost.
+            </div>
+        </div>
+        
+        <div class="card step-card">
+            <h2><span class="step-number">4</span> Start Containers</h2>
+            <p>Start the Prometheus and Grafana containers:</p>
+            
+            <div class="file-header">PowerShell Command</div>
+            <div class="code-block">
+<span class="powershell-cmd">docker-compose</span> up -d
+            </div>
+            <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Command</button>
+            
+            <p>Wait 30 seconds, then check if containers are running:</p>
+            
+            <div class="file-header">PowerShell Command</div>
+            <div class="code-block">
+<span class="powershell-cmd">docker</span> ps
+            </div>
+            <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Command</button>
+            
+            <p>Should show both containers running.</p>
+        </div>
+        
+        <div class="card step-card">
+            <h2><span class="step-number">5</span> Verify Prometheus is Scraping</h2>
+            <ol>
+                <li>Open browser: <a href="http://localhost:9090" target="_blank">http://localhost:9090</a></li>
+                <li>Click <strong>Status → Targets</strong></li>
+                <li>Look for <code>dotnet-api</code> with <strong>State: UP</strong> (green)</li>
+            </ol>
+            
+            <div class="warning">
+                If the state is DOWN, wait 30 more seconds and refresh the page.
+            </div>
+        </div>
+        
+        <div class="card step-card">
+            <h2><span class="step-number">6</span> Setup Grafana</h2>
+            <ol>
+                <li>Open browser: <a href="http://localhost:3000" target="_blank">http://localhost:3000</a></li>
+                <li>Login: <strong>admin</strong> / <strong>admin</strong></li>
+                <li>Click <strong>Configuration</strong> (gear icon) → <strong>Data Sources</strong></li>
+                <li>Click <strong>Add data source</strong></li>
+                <li>Select <strong>Prometheus</strong></li>
+                <li>Set URL: <code>http://prometheus:9090</code></li>
+                <li>Click <strong>Save & Test</strong></li>
+            </ol>
+            
+            <div class="success">
+                Should see "Data source is working" message.
+            </div>
+        </div>
+        
+        <div class="card step-card">
+            <h2><span class="step-number">7</span> Create Dashboard</h2>
+            
+            <h3>Create Dashboard</h3>
+            <ol>
+                <li>Click <strong>+</strong> (plus icon) → <strong>Dashboard</strong></li>
+                <li>Click <strong>Add visualization</strong></li>
+            </ol>
+            
+            <h3>Panel 1 - Request Rate</h3>
+            <ol>
+                <li>Query A: <code>rate(http_requests_received_total[1m])</code></li>
+                <li>Click <strong>Run query</strong> (top right)</li>
+                <li>See if you get data</li>
+                <li>Click <strong>Apply</strong></li>
+            </ol>
+            
+            <h3>Panel 2 - Memory Usage</h3>
+            <ol>
+                <li>Click <strong>Add panel</strong> (top right)</li>
+                <li>Query A: <code>process_private_memory_bytes / 1024 / 1024</code></li>
+                <li>Click <strong>Apply</strong></li>
+            </ol>
+            
+            <h3>Panel 3 - Response Time</h3>
+            <ol>
+                <li>Click <strong>Add panel</strong></li>
+                <li>Query A: <code>histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000</code></li>
+                <li>Click <strong>Apply</strong></li>
+            </ol>
+            
+            <h3>Save Dashboard</h3>
+            <ol>
+                <li>Click <strong>Save</strong> (top right)</li>
+                <li>Name: <strong>.NET API Metrics</strong></li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+        </div>
+        
+        <div class="card step-card">
+            <h2><span class="step-number">8</span> Generate Traffic</h2>
+            <p>In a NEW PowerShell window (regular user, not Administrator), run:</p>
+            
+            <div class="file-header">PowerShell Command</div>
+            <div class="code-block">
+<span class="powershell-comment"># PowerShell infinite loop to generate traffic</span><br>
+<span class="powershell-cmd">while</span> (<span class="yaml-string">$true</span>) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="powershell-cmd">Invoke-RestMethod</span> -Uri <span class="yaml-string">"https://localhost:7216/health"</span> -SkipCertificateCheck<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="powershell-cmd">Start-Sleep</span> -Seconds 1<br>
+}
+            </div>
+            <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Command</button>
+            
+            <div class="powershell-loop">
+                <p><strong>Alternative (if Invoke-RestMethod fails):</strong></p>
+                <div class="file-header">PowerShell Alternative</div>
+                <div class="code-block">
+<span class="powershell-cmd">for</span> (<span class="yaml-string">;;</span>) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="powershell-cmd">curl.exe</span> -k https://localhost:7216/health<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="powershell-cmd">Start-Sleep</span> 1<br>
+}
+                </div>
+                <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Alternative</button>
+            </div>
+            
+            <div class="note">
+                This continuously calls your API to generate metrics data. Keep this running while monitoring.
+                Press <strong>Ctrl+C</strong> to stop the loop.
+            </div>
+        </div>
+        
+        <div class="card step-card">
+            <h2><span class="step-number">9</span> Watch Metrics</h2>
+            <p>Go back to your Grafana dashboard. You should see graphs updating every 15 seconds.</p>
+            
+            <div class="success">
+                <strong>🎉 Congratulations!</strong> You now have live monitoring of your .NET API.
+            </div>
+            
+            <div class="checklist">
+                <li>✅ Prometheus scraping .NET API metrics</li>
+                <li>✅ Grafana connected to Prometheus</li>
+                <li>✅ Dashboard with 3 key metrics</li>
+                <li>✅ Live monitoring of your API</li>
+            </div>
+        </div>
+        
+        <div class="card troubleshooting-card">
+            <h2>🔧 Troubleshooting</h2>
+            
+            <div class="problem">
+                <h3>Problem 1: Prometheus target is DOWN</h3>
+                <p>Test connectivity from the container:</p>
+                <div class="file-header">PowerShell Command</div>
+                <div class="code-block">
+<span class="powershell-cmd">docker</span> exec prometheus curl -k https://host.docker.internal:7216/metrics
+                </div>
+                <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Command</button>
+                <p>If this fails, check that your .NET API is running and accessible.</p>
+            </div>
+            
+            <div class="problem">
+                <h3>Problem 2: No data in Grafana</h3>
+                <ul>
+                    <li>Make sure traffic generator is running (Step 8)</li>
+                    <li>Wait 1 minute for data to accumulate</li>
+                    <li>Refresh Grafana dashboard</li>
+                    <li>Verify Prometheus target is UP (Step 5)</li>
+                </ul>
+            </div>
+            
+            <div class="problem">
+                <h3>Problem 3: Can't login to Grafana</h3>
+                <p>Default credentials are: <strong>admin / admin</strong></p>
+                <p>If you've changed the password and forgotten it, you can reset by:</p>
+                <div class="file-header">PowerShell Command</div>
+                <div class="code-block">
+<span class="powershell-cmd">docker</span> exec grafana grafana-cli admin reset-admin-password admin
+                </div>
+                <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Command</button>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Guide created for .NET API Monitoring with Prometheus & Grafana</p>
+        <p>Save this HTML file for offline reference</p>
+    </footer>
+    
+    <script>
+        function downloadHTML() {
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(blob);
+            downloadLink.download = 'prometheus-grafana-monitoring-guide.html';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+        
+        function copyToClipboard(element) {
+            const text = element.innerText || element.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const originalText = element.nextElementSibling.textContent;
+                element.nextElementSibling.textContent = 'Copied!';
+                setTimeout(() => {
+                    element.nextElementSibling.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Colorize PowerShell commands
+            const psBlocks = document.querySelectorAll('.code-block');
+            psBlocks.forEach(block => {
+                if (block.textContent.includes('cd ') || block.textContent.includes('mkdir ') || 
+                    block.textContent.includes('docker ') || block.textContent.includes('Invoke-RestMethod') ||
+                    block.textContent.includes('Start-Sleep') || block.textContent.includes('while') ||
+                    block.textContent.includes('for ') || block.textContent.includes('curl.exe')) {
+                    // Already colored by HTML classes
+                }
+            });
+        });
+    </script>
+</body>
+</html>
