@@ -94,9 +94,6 @@ using (var scope = app.Services.CreateScope())
     app.UseDeveloperExceptionPage();
 }
 
-// .NET 10 OPTIMIZED: Proper middleware ordering
-app.UseRouting();
-
 // .NET 10 FIX: Thread-safe metrics configuration
 app.UseHttpMetrics(options =>
 {
@@ -107,6 +104,9 @@ app.UseHttpMetrics(options =>
 
     // .NET 10: Use built-in context features instead of custom labels
 });
+
+// .NET 10 OPTIMIZED: Proper middleware ordering
+app.UseRouting();
 
 app.UseCors();
 app.UseAuthorization();
