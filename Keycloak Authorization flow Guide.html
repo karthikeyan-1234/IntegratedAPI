@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keycloak Authentication & Authorization Flow Guide</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --success: #27ae60;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --border: #bdc3c7;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        nav {
+            background: var(--light);
+            padding: 20px;
+            border-bottom: 2px solid var(--border);
+        }
+        
+        .index {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .index-section {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid var(--secondary);
+        }
+        
+        .index-section h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .index-section ul {
+            list-style: none;
+            padding-left: 5px;
+        }
+        
+        .index-section li {
+            margin-bottom: 8px;
+        }
+        
+        .index-section a {
+            color: var(--secondary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .index-section a:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+        
+        main {
+            padding: 30px;
+        }
+        
+        section {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        section h2 {
+            color: var(--primary);
+            border-bottom: 2px solid var(--secondary);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        section h2:before {
+            content: "•";
+            color: var(--accent);
+            font-size: 2em;
+        }
+        
+        .phase {
+            background: white;
+            border-left: 5px solid;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .phase-1 { border-color: #e74c3c; }
+        .phase-2 { border-color: #3498db; }
+        .phase-3 { border-color: #f39c12; }
+        .phase-4 { border-color: #27ae60; }
+        .phase-5 { border-color: #9b59b6; }
+        
+        .phase h3 {
+            color: var(--dark);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .phase-number {
+            background: currentColor;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .flow-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 30px 0;
+            gap: 20px;
+        }
+        
+        .flow-step {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        
+        .flow-node {
+            background: white;
+            border: 2px solid var(--secondary);
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 200px;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        
+        .flow-arrow {
+            font-size: 24px;
+            color: var(--secondary);
+            font-weight: bold;
+        }
+        
+        .flow-connection {
+            width: 80%;
+            height: 2px;
+            background: linear-gradient(to right, var(--secondary), var(--accent));
+            margin: 10px 0;
+        }
+        
+        .code-snippet {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 5px;
+            font-family: 'Consolas', monospace;
+            overflow-x: auto;
+            margin: 20px 0;
+            border-left: 4px solid var(--accent);
+        }
+        
+        .token-flow {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .token-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid;
+            text-align: center;
+        }
+        
+        .token-box h4 {
+            margin-bottom: 10px;
+        }
+        
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .security-item {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            border-top: 4px solid var(--success);
+        }
+        
+        .callout {
+            background: linear-gradient(135deg, #ffeaa7, #fab1a0);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 5px solid #e17055;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            background: var(--primary);
+            color: white;
+            margin-top: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            .flow-step {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+            
+            header {
+                padding: 20px;
+            }
+            
+            main {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Keycloak Authentication & Authorization Flow</h1>
+            <p>Complete Guide for Angular + ASP.NET Core Integration</p>
+        </header>
+        
+        <nav>
+            <h2>📑 Quick Navigation Index</h2>
+            <div class="index">
+                <div class="index-section">
+                    <h3>Core Concepts</h3>
+                    <ul>
+                        <li><a href="#overview">System Overview</a></li>
+                        <li><a href="#components">Key Components</a></li>
+                        <li><a href="#token-types">Token Types Explained</a></li>
+                    </ul>
+                </div>
+                
+                <div class="index-section">
+                    <h3>Authentication Flow</h3>
+                    <ul>
+                        <li><a href="#phase-1">Phase 1: Initial Login</a></li>
+                        <li><a href="#phase-2">Phase 2: API Access</a></li>
+                        <li><a href="#angular-interceptor">Angular Interceptor</a></li>
+                    </ul>
+                </div>
+                
+                <div class="index-section">
+                    <h3>Authorization Flow</h3>
+                    <ul>
+                        <li><a href="#phase-3">Phase 3: API Authentication</a></li>
+                        <li><a href="#phase-4">Phase 4: Authorization Filter</a></li>
+                        <li><a href="#phase-5">Phase 5: Execution</a></li>
+                    </ul>
+                </div>
+                
+                <div class="index-section">
+                    <h3>Security & Implementation</h3>
+                    <ul>
+                        <li><a href="#security">Security Aspects</a></li>
+                        <li><a href="#keycloak-calls">Keycloak API Calls</a></li>
+                        <li><a href="#best-practices">Best Practices</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        
+        <main>
+            <section id="overview">
+                <h2>🚀 System Overview</h2>
+                <p>This guide details the complete authentication and authorization flow between an Angular frontend, ASP.NET Core backend, and Keycloak Identity Provider.</p>
+                
+                <div class="callout">
+                    <strong>Architecture Pattern:</strong> OAuth 2.0 Authorization Code Flow with PKCE + Keycloak UMA 2.0 for fine-grained authorization
+                </div>
+                
+                <div class="flow-diagram">
+                    <div class="flow-step">
+                        <div class="flow-node" style="background: #ffeaa7;">Angular App<br>(localhost:4200)</div>
+                        <div class="flow-arrow">↔</div>
+                        <div class="flow-node" style="background: #a29bfe;">Keycloak Server<br>(Auth Provider)</div>
+                        <div class="flow-arrow">↔</div>
+                        <div class="flow-node" style="background: #74b9ff;">.NET API<br>(Products Service)</div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="components">
+                <h2>🧩 Key Components</h2>
+                <div class="token-flow">
+                    <div class="token-box" style="border-color: #e74c3c;">
+                        <h4>Angular Side</h4>
+                        <p><code>keycloak-angular</code> library</p>
+                        <p><code>AuthInterceptor</code> service</p>
+                        <p>PKCE code verifier/challenge</p>
+                    </div>
+                    
+                    <div class="token-box" style="border-color: #3498db;">
+                        <h4>.NET Core Side</h4>
+                        <p><code>KeycloakAuthorizationFilter</code></p>
+                        <p><code>Keycloak.AspNetCore</code> packages</p>
+                        <p>UMA permission checking</p>
+                    </div>
+                    
+                    <div class="token-box" style="border-color: #27ae60;">
+                        <h4>Keycloak Server</h4>
+                        <p>Authorization endpoint</p>
+                        <p>Token endpoint</p>
+                        <p>UMA decision endpoint</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="token-types">
+                <h2>🔑 Token Types Explained</h2>
+                <div class="token-flow">
+                    <div class="token-box" style="border-color: #3498db;">
+                        <h4>Access Token (JWT)</h4>
+                        <p><strong>Lifetime:</strong> 5-15 minutes</p>
+                        <p><strong>Purpose:</strong> API Authorization</p>
+                        <p><strong>Contains:</strong> User claims, scopes</p>
+                    </div>
+                    
+                    <div class="token-box" style="border-color: #f39c12;">
+                        <h4>Refresh Token</h4>
+                        <p><strong>Lifetime:</strong> Hours/days</p>
+                        <p><strong>Purpose:</strong> Get new access tokens</p>
+                        <p><strong>Storage:</strong> Secure HTTP-only cookie</p>
+                    </div>
+                    
+                    <div class="token-box" style="border-color: #9b59b6;">
+                        <h4>ID Token (JWT)</h4>
+                        <p><strong>Purpose:</strong> User authentication info</p>
+                        <p><strong>Contains:</strong> User profile data</p>
+                        <p><strong>Used for:</strong> Client-side user info</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="phase-1">
+                <h2>🔐 Phase 1: Initial Authentication Flow</h2>
+                <div class="phase phase-1">
+                    <h3><span class="phase-number">1</span> User accesses localhost:4200</h3>
+                    <p>Angular app initializes and checks authentication status.</p>
+                    
+                    <div class="flow-diagram">
+                        <div class="flow-node">Angular App</div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-node">Keycloak Login Redirect</div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-node">User Authenticates</div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-node">Redirect with Auth Code</div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-node">Exchange for Tokens</div>
+                    </div>
+                </div>
+                
+                <div class="callout">
+                    <strong>Two Keycloak Calls Happen:</strong><br>
+                    1. GET /auth → Returns authorization code via redirect<br>
+                    2. POST /token → Exchanges code for tokens (access, refresh, ID)
+                </div>
+            </section>
+            
+            <section id="angular-interceptor">
+                <h2>🔄 Angular Auth Interceptor</h2>
+                <p>The interceptor automatically manages tokens for all HTTP requests:</p>
+                
+                <div class="code-snippet">
+// auth.interceptor.ts - Token Management
+intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+  return from(
+    // Refresh token if expiring in 30 seconds
+    this.keycloakService.updateToken(30).then((refreshed) => {
+      if (refreshed) console.log('Token refreshed');
+    })
+  ).pipe(
+    switchMap(() => from(this.keycloakService.getToken())),
+    switchMap(token => {
+      if (token) {
+        const authReq = req.clone({
+          setHeaders: { Authorization: `Bearer ${token}` }
+        });
+        return next.handle(authReq);
+      }
+      this.authService.logout();
+      return next.handle(req);
+    })
+  );
+}
+                </div>
+            </section>
+            
+            <section id="phase-2">
+                <h2>📡 Phase 2: API Access with Token</h2>
+                <div class="phase phase-2">
+                    <h3><span class="phase-number">2</span> User requests protected resource</h3>
+                    
+                    <div class="flow-diagram">
+                        <div class="flow-step">
+                            <div class="flow-node" style="background: #ffeaa7;">Angular UI</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node" style="background: #74b9ff;">API Request<br>GET /api/Products</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node" style="background: #a29bfe;">.NET Middleware</div>
+                        </div>
+                        <div class="flow-connection"></div>
+                        <div class="flow-step">
+                            <div class="flow-node">Header: Authorization: Bearer {token}</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="phase-3">
+                <h2>🔍 Phase 3: API Authentication</h2>
+                <div class="phase phase-3">
+                    <h3><span class="phase-number">3</span> JWT Validation in .NET</h3>
+                    
+                    <div class="code-snippet">
+// Program.cs - Authentication Configuration
+builder.Services.AddKeycloakWebApiAuthentication(builder.Configuration);
+
+// JWT Validation Settings
+options.RequireHttpsMetadata = false;
+options.TokenValidationParameters.ValidAudiences = 
+    new[] { "api-app", "angular-app", "master-realm", "account" };
+options.TokenValidationParameters.RoleClaimType = ClaimTypes.Role;
+                    </div>
+                    
+                    <div class="flow-diagram">
+                        <div class="flow-step">
+                            <div class="flow-node">Extract Bearer Token</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node">Validate JWT Signature</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node">Check Expiration</div>
+                        </div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-node">Validate Issuer (Keycloak URL)</div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-node">Create ClaimsPrincipal</div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="phase-4">
+                <h2>⚖️ Phase 4: Authorization Filter Execution</h2>
+                <div class="phase phase-4">
+                    <h3><span class="phase-number">4</span> UMA Permission Check</h3>
+                    
+                    <div class="code-snippet">
+// ProductsController.cs - Resource Protection
+[Resource("Products")]          // Keycloak resource name
+[Permission("read")]            // Required permission
+public class ProductsController : ControllerBase
+{
+    [HttpGet]
+    [Permission("read")]
+    public async Task<IActionResult> GetAllProducts()
+    {
+        // Only executes if UMA check passes
+    }
+}
+                    </div>
+                    
+                    <div class="flow-diagram">
+                        <div class="flow-step">
+                            <div class="flow-node">KeycloakAuthorizationFilter</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node">Reads [Resource] & [Permission]</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node">Makes UMA Request</div>
+                        </div>
+                        <div class="flow-connection"></div>
+                        <div class="flow-node" style="background: #a29bfe;">
+                            POST /token?grant_type=uma-ticket<br>
+                            permission=Products#read<br>
+                            → Returns {"result": true/false}
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="phase-5">
+                <h2>✅ Phase 5: Controller Execution</h2>
+                <div class="phase phase-5">
+                    <h3><span class="phase-number">5</span> Request Processing</h3>
+                    
+                    <div class="flow-diagram">
+                        <div class="flow-step">
+                            <div class="flow-node">UMA Authorized</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node">Execute Controller Action</div>
+                            <div class="flow-arrow">→</div>
+                            <div class="flow-node">Call Services & Repository</div>
+                        </div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-node">Database Operations</div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-node">Return Response (200 OK)</div>
+                        <div class="flow-arrow">↓</div>
+                        <div class="flow-node">Angular Receives Data</div>
+                    </div>
+                </div>
+                
+                <div class="callout">
+                    <strong>If UMA denies access:</strong><br>
+                    • Returns 403 Forbidden immediately<br>
+                    • Controller action never executes<br>
+                    • Angular shows error/redirects
+                </div>
+            </section>
+            
+            <section id="keycloak-calls">
+                <h2>📞 Keycloak API Calls Summary</h2>
+                <div class="security-grid">
+                    <div class="security-item">
+                        <h4>1. Authorization Request</h4>
+                        <p><strong>Method:</strong> GET</p>
+                        <p><strong>Endpoint:</strong> /auth</p>
+                        <p><strong>Returns:</strong> Authorization code</p>
+                    </div>
+                    
+                    <div class="security-item">
+                        <h4>2. Token Exchange</h4>
+                        <p><strong>Method:</strong> POST</p>
+                        <p><strong>Endpoint:</strong> /token</p>
+                        <p><strong>Returns:</strong> Access, Refresh, ID tokens</p>
+                    </div>
+                    
+                    <div class="security-item">
+                        <h4>3. UMA Permission Check</h4>
+                        <p><strong>Method:</strong> POST</p>
+                        <p><strong>Endpoint:</strong> /token (uma-ticket)</p>
+                        <p><strong>Returns:</strong> Permission decision</p>
+                    </div>
+                    
+                    <div class="security-item">
+                        <h4>4. Token Refresh</h4>
+                        <p><strong>Method:</strong> POST</p>
+                        <p><strong>Endpoint:</strong> /token (refresh_token)</p>
+                        <p><strong>Returns:</strong> New access token</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="security">
+                <h2>🛡️ Security Aspects</h2>
+                <div class="security-grid">
+                    <div class="security-item">
+                        <h4>PKCE Protection</h4>
+                        <p>Prevents authorization code interception attacks</p>
+                        <p><code>code_challenge</code> → <code>code_verifier</code></p>
+                    </div>
+                    
+                    <div class="security-item">
+                        <h4>Short-lived Tokens</h4>
+                        <p>Access tokens: 5-15 minutes</p>
+                        <p>Automatic refresh via interceptor</p>
+                    </div>
+                    
+                    <div class="security-item">
+                        <h4>UMA Fine-grained Auth</h4>
+                        <p>Resource-level permissions</p>
+                        <p>Dynamic policy evaluation</p>
+                    </div>
+                    
+                    <div class="security-item">
+                        <h4>CSRF Protection</h4>
+                        <p>State parameter in auth flow</p>
+                        <p>Same-site cookies</p>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="best-practices">
+                <h2>🏆 Best Practices Implemented</h2>
+                <ul style="margin: 20px 0; padding-left: 30px;">
+                    <li><strong>Silent Token Refresh:</strong> Automatic refresh 30 seconds before expiry</li>
+                    <li><strong>Resource Attributes:</strong> Declarative permission requirements</li>
+                    <li><strong>Centralized Auth Logic:</strong> Single filter handles all authorization</li>
+                    <li><strong>HTTPS Enforcement:</strong> In production (disabled in dev for testing)</li>
+                    <li><strong>Audience Validation:</strong> Multiple valid audiences supported</li>
+                    <li><strong>Proper Error Handling:</strong> Clear logs for auth failures</li>
+                </ul>
+            </section>
+        </main>
+        
+        <footer>
+            <p>Keycloak Authentication & Authorization Flow Guide | Angular + ASP.NET Core Integration</p>
+            <p style="opacity: 0.8; margin-top: 10px; font-size: 0.9rem;">
+                Implements OAuth 2.0 Authorization Code Flow with PKCE and Keycloak UMA 2.0
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
