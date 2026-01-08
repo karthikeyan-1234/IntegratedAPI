@@ -6,6 +6,9 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 using Prometheus;
 
+using Serilog;
+using Serilog.Formatting.Elasticsearch;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -58,6 +61,13 @@ builder.Services.AddLogging(logging =>
     logging.AddConsole();
     logging.AddDebug();
 });
+
+ConfigureLogs();
+
+
+
+builder.Host.UseSerilog();
+
 
 var app = builder.Build();
 
@@ -182,3 +192,39 @@ lifetime.ApplicationStarted.Register(() =>
     app.Logger.LogInformation("Application started and metrics available at /metrics"));
 
 app.Run();
+
+
+
+#region Configure Logs
+
+void ConfigureLogs()
+{
+    var configuration = new ConfigurationBuilder()
+        .AddJsonFile("appsettings.json")
+        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+        .Build();
+
+    var logstashUrl = configuration["Logging:Logstash:Url"] ?? "http://localhost:5001";
+
+    Log.Logger = new LoggerConfiguration()
+        .ReadFrom.Configuration(configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "IntegratedAPI")
+        .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
+
+        // Console output
+        .WriteTo.Console(
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+
+        // Debug output
+        .WriteTo.Debug()
+
+        // Send to Logstash - WORKING WITH REQUIRED PARAMETER
+        .WriteTo.Http(
+            requestUri: logstashUrl,
+            queueLimitBytes: null)
+
+        .CreateLogger();
+}
+
+#endregion

@@ -1,0 +1,2 @@
+cluster.name: docker-elk
+network.host: 0.0.0.0
