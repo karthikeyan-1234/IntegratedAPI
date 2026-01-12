@@ -1,4 +1,5 @@
-﻿using IntegratedAPI.Contexts;
+﻿using IntegratedAPI.Auth;
+using IntegratedAPI.Contexts;
 using IntegratedAPI.Models;
 using IntegratedAPI.Models.DTOs;
 
@@ -10,6 +11,7 @@ namespace IntegratedAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Resource("Products")]
     public class ProductController : ControllerBase
     {
 
@@ -23,6 +25,7 @@ namespace IntegratedAPI.Controllers
         }
 
         [HttpGet("GetProductsAsync")]
+        [Permission("read")]
         public async Task<IActionResult> GetProductsAsync()
         {
             return Ok(await _projectDbContext.Products.ToListAsync());

@@ -8,6 +8,40 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="elk-dotnet-setup\**" />
+    <Compile Remove="Prometheus-Grafana-Local\**" />
+    <Compile Remove="Prometheus-Grafana\**" />
+    <Content Remove="elk-dotnet-setup\**" />
+    <Content Remove="Prometheus-Grafana-Local\**" />
+    <Content Remove="Prometheus-Grafana\**" />
+    <EmbeddedResource Remove="elk-dotnet-setup\**" />
+    <EmbeddedResource Remove="Prometheus-Grafana-Local\**" />
+    <EmbeddedResource Remove="Prometheus-Grafana\**" />
+    <None Remove="elk-dotnet-setup\**" />
+    <None Remove="Prometheus-Grafana-Local\**" />
+    <None Remove="Prometheus-Grafana\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="CI - CD Setup Guide - .NET 8 Web API with Jenkins and Kubernetes.html" />
+    <None Remove="Dockerfile" />
+    <None Remove="ingress.yml" />
+    <None Remove="integratedapi-deploy.yml" />
+    <None Remove="integratedapi-hpa-fixed.yml" />
+    <None Remove="Jenkinsfile" />
+    <None Remove="Keycloak Authorization flow Guide.html" />
+    <None Remove="KeyCloak docker-compose.yml" />
+    <None Remove="Kong Config Guide.html" />
+    <None Remove="kong-integrated.yml" />
+    <None Remove="Kubernetes HPA Setup Guide.html" />
+    <None Remove="load-test-hpa-integrated-api.txt" />
+    <None Remove="metrics-server-fixed.yaml" />
+    <None Remove="Prometheus Grafana Guide.html" />
+    <None Remove="sqlserver-deploy.yml" />
+    <None Remove="TestLoadBalance.ps1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.11">
       <PrivateAssets>all</PrivateAssets>
@@ -38,6 +72,12 @@
 
   <ItemGroup>
     <Folder Include="Migrations\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Keycloak.AuthServices.Authorization" Version="2.7.0" />
+    <PackageReference Include="Keycloak.AuthServices.Authentication" Version="2.7.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.8" />
   </ItemGroup>
 
 </Project>

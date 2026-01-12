@@ -1,18 +1,30 @@
-﻿using IntegratedAPI.Contexts;
+﻿using IntegratedAPI.Auth;
+using IntegratedAPI.Contexts;
 using IntegratedAPI.Models.DTOs;
 
+using Keycloak.AuthServices.Authentication;
+using Keycloak.AuthServices.Authorization;
+
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 
 using Prometheus;
 
 using Serilog;
 using Serilog.Formatting.Elasticsearch;
 
+using System.Security.Claims;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+// Add this in Program.cs after adding controllers
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<KeycloakAuthorizationFilter>();
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -45,13 +57,15 @@ builder.Services.AddHealthChecks()
     );
 
 // .NET 10 ENHANCEMENT: Improved CORS with named policy
+
+// CORS
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("AllowAngularApp", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins("http://localhost:4200")
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
@@ -67,6 +81,56 @@ ConfigureLogs();
 
 
 builder.Host.UseSerilog();
+
+
+//🔑 + 🛡️ Keycloak Section
+
+builder.Services.AddScoped<KeycloakAuthorizationFilter>();
+builder.Services.AddKeycloakWebApiAuthentication(builder.Configuration);// 🔑 Configure Keycloak Authentication (uses appsettings.json)
+builder.Services.AddKeycloakAuthorization(builder.Configuration);// 🛡️ Configure Keycloak Authorization Services
+
+
+// ⚠️ NECESSARY CUSTOM LOGIC: Fix HTTPS requirement and add custom token validation
+builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+{
+    // CRITICAL: Disable HTTPS requirement for development
+    options.RequireHttpsMetadata = false;
+
+    // Required for multiple audience support
+    options.TokenValidationParameters.ValidAudiences = new[] { "api-app", "angular-app", "master-realm", "account" };
+    options.TokenValidationParameters.RoleClaimType = ClaimTypes.Role;
+
+    // Required for custom azp validation and role extraction
+    options.Events = new JwtBearerEvents
+    {
+
+        OnTokenValidated = ctx =>
+        {
+            // Reject if token doesn't contain UMA "authorization.permissions"
+            var hasRpt = ctx.Principal?.Claims.Any(c => c.Type == "authorization") ?? false;
+            if (!hasRpt)
+            {
+                ctx.Fail("RPT (UMA token) required.");
+            }
+            return Task.CompletedTask;
+        },
+
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine("Authentication failed: " + context.Exception.Message);
+            return Task.CompletedTask;
+        },
+
+        OnChallenge = context =>
+        {
+            Console.WriteLine("OnChallenge: " + context.Error + " - " + context.ErrorDescription);
+            return Task.CompletedTask;
+        }
+    };
+});
+
+//For resolving IhttpClientFactory
+builder.Services.AddHttpClient();
 
 
 var app = builder.Build();
@@ -118,7 +182,8 @@ app.UseHttpMetrics(options =>
 // .NET 10 OPTIMIZED: Proper middleware ordering
 app.UseRouting();
 
-app.UseCors();
+app.UseCors("AllowAngularApp");
+app.UseAuthentication();
 app.UseAuthorization();
 
 // .NET 10: Endpoint routing with improved performance
