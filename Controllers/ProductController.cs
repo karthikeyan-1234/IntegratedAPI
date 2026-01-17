@@ -1,5 +1,6 @@
 ﻿using IntegratedAPI.Auth;
 using IntegratedAPI.Contexts;
+using IntegratedAPI.Exceptions;
 using IntegratedAPI.Models;
 using IntegratedAPI.Models.DTOs;
 
@@ -28,11 +29,17 @@ namespace IntegratedAPI.Controllers
         [Permission("read")]
         public async Task<IActionResult> GetProductsAsync()
         {
-            return Ok(await _projectDbContext.Products.ToListAsync());
+            var products = await _projectDbContext.Products.ToListAsync();
+
+            if(products.Any())
+                return Ok(products);
+            else
+                throw new NoProductsException("GetProductAsync method failed");
         }
 
 
         [HttpPost("AddProductAsync")]
+        [Permission("create")]
         public async Task<IActionResult> AddProductAsync([FromBody] newProduct product)
         {
             product newProduct1 = new product
@@ -63,6 +70,26 @@ namespace IntegratedAPI.Controllers
             existingProduct.description = updatedProduct.description;
             await _projectDbContext.SaveChangesAsync();
             return Ok(existingProduct);
+        }
+
+
+        [HttpDelete("DeleteProductAsync/{productId}")]
+        [Permission("delete")]
+        public async Task<IActionResult> DeleteProductAsync(int productId)
+        {
+            if (_projectDbContext.Products.Any())
+            {
+                var existingProduct = await _projectDbContext.Products.FindAsync(productId);
+
+                if (existingProduct == null)
+                    return NotFound();
+
+                _projectDbContext.Products.Remove(existingProduct);
+                await _projectDbContext.SaveChangesAsync();
+                return NoContent();
+            }
+            else
+                throw new NoProductsException("No products in DB to be deleted..!!");
         }
     }
 }

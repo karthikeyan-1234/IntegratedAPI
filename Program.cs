@@ -1,5 +1,6 @@
 ﻿using IntegratedAPI.Auth;
 using IntegratedAPI.Contexts;
+using IntegratedAPI.Exceptions;
 using IntegratedAPI.Models.DTOs;
 
 using Keycloak.AuthServices.Authentication;
@@ -133,6 +134,10 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
 builder.Services.AddHttpClient();
 
 
+builder.Services.AddExceptionHandler<ProductExceptionHandler>();
+builder.Services.AddProblemDetails();
+
+
 var app = builder.Build();
 
 // .NET 10 ENHANCEMENT: Async database initialization
@@ -255,6 +260,8 @@ app.Use(async (context, next) =>
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 lifetime.ApplicationStarted.Register(() =>
     app.Logger.LogInformation("Application started and metrics available at /metrics"));
+
+app.UseExceptionHandler();
 
 app.Run();
 
