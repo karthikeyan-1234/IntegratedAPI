@@ -1,5 +1,6 @@
 ﻿using IntegratedAPI.Models.DTOs;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -23,6 +24,7 @@ namespace IntegratedAPI.Controllers
 
         //Create Payment Intent
         [HttpPost("create-payment-intent")]
+        [AllowAnonymous]
         public async Task<IActionResult> CreatePaymentIntent([FromBody] PaymentIntentCreateRequest request)
         {
             if (request == null)
