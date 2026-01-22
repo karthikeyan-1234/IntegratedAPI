@@ -457,8 +457,30 @@ Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service" 
                 <li><strong>Forwarded to:</strong> <code>http://integratedapi-service:7080/health</code></li>
             </ul>
         </div>
+		
+		<h3>5.4. Metrics Route (Preserve Path)</h3>
+        <p>For metrics.</p>
+        
+        <div class="code-block">
+            <code>Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/routes" `
+    -Method POST `
+    -ContentType 'application/json' `
+    -Body (@{
+        name="integratedapi-metrics-route"
+        paths=@("/metrics")
+        strip_path=$false
+    } | ConvertTo-Json -Depth 4)</code>
+        </div>
+        
+        <div class="response-block">
+            <strong>Path Handling:</strong>
+            <ul>
+                <li><strong>Request:</strong> <code>http://kong-proxy.local/metrics</code></li>
+                <li><strong>Forwarded to:</strong> <code>http://integratedapi-service:7080/metrics</code></li>
+            </ul>
+        </div>
 
-        <h3>5.4. Weather Forecast Route (Preserve Path)</h3>
+        <h3>5.5. Weather Forecast Route (Preserve Path)</h3>
         <p>For the sample WeatherForecast endpoint.</p>
         
         <div class="code-block">
@@ -472,7 +494,7 @@ Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service" 
     } | ConvertTo-Json -Depth 4)</code>
         </div>
 
-        <h3>5.5. Verify All Routes</h3>
+        <h3>5.6. Verify All Routes</h3>
         <div class="code-block">
             <code># List all routes for your service
 Invoke-RestMethod -Uri "http://kong-admin.local/services/integratedapi-service/routes" | ConvertTo-Json -Depth 5

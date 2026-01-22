@@ -35,6 +35,16 @@ spec:
               value: "Production"
             - name: ConnectionStrings__DefaultConnection
               value: "Server=sqlserver-service,1433;Database=ProjectDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+            - name: Keycloak__auth-server-url
+              value: "http://keycloak.local/"
+            - name: Keycloak__realm
+              value: "master"
+            - name: Keycloak__resource
+              value: "api-app"
+            - name: Keycloak__verify-token-audience
+              value: "true"
+            - name: Keycloak__credentials__secret
+              value: "b4HcDVKZxthP6dqCsRQvRPtSDenSCpUH"
           readinessProbe:
             httpGet:
               path: /health
