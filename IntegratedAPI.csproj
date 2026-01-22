@@ -31,6 +31,7 @@
     <None Remove="Jenkinsfile" />
     <None Remove="Keycloak Authorization flow Guide.html" />
     <None Remove="KeyCloak docker-compose.yml" />
+    <None Remove="keycloak-deploy.yml" />
     <None Remove="Kong Config Guide.html" />
     <None Remove="kong-integrated.yml" />
     <None Remove="Kubernetes HPA Setup Guide.html" />
