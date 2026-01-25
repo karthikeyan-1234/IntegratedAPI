@@ -1,0 +1,136 @@
+# ============================================================================
+# Elasticsearch - Single Node (Dev / Docker Desktop)
+# ============================================================================
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: elk
+  labels:
+    app: elasticsearch
+spec:
+  serviceName: elasticsearch
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.19.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9200
+              name: http
+            - containerPort: 9300
+              name: transport
+          env:
+            # ---- Cluster / Node ----
+            - name: discovery.type
+              value: single-node
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+
+            # ---- Disable security (Docker Desktop friendly) ----
+            - name: xpack.security.enabled
+              value: "false"
+            - name: xpack.security.enrollment.enabled
+              value: "false"
+
+            # ---- JVM tuning ----
+            - name: ES_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"
+
+            # ---- Prevent mmap crash on Docker Desktop ----
+            - name: bootstrap.memory_lock
+              value: "false"
+
+          volumeMounts:
+            - name: elasticsearch-data
+              mountPath: /usr/share/elasticsearch/data
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9200
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9200
+            initialDelaySeconds: 60
+            periodSeconds: 20
+
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+
+  volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: elk
+  labels:
+    app: elasticsearch
+spec:
+  clusterIP: None   # Headless service (StatefulSet best practice)
+  selector:
+    app: elasticsearch
+  ports:
+    - name: http
+      port: 9200
+      targetPort: 9200
+    - name: transport
+      port: 9300
+      targetPort: 9300
+
+---
+
+# ----------------------------------------------------------------------------
+# Elasticsearch Ingress (nginx)
+# ----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: elasticsearch-ingress
+  namespace: elk
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: elasticsearch.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: elasticsearch
+                port:
+                  number: 9200

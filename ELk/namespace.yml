@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: elk
+  labels:
+    app.kubernetes.io/name: elk
+    app.kubernetes.io/part-of: observability
+    environment: dev

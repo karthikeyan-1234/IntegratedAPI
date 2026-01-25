@@ -15,6 +15,7 @@ using Prometheus;
 
 using Serilog;
 using Serilog.Formatting.Elasticsearch;
+using Serilog.Sinks.Elasticsearch;
 
 using System.Security.Claims;
 
@@ -268,33 +269,41 @@ app.Run();
 
 
 #region Configure Logs
-
 void ConfigureLogs()
 {
-    var configuration = new ConfigurationBuilder()
-        .AddJsonFile("appsettings.json")
-        .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-        .Build();
-
-    var logstashUrl = configuration["Logging:Logstash:Url"] ?? "http://localhost:5001";
+    // Use the existing builder.Configuration, don't create a new one
+    var logstashUrl = builder.Configuration["Logging:Logstash:Url"]
+        ?? "http://logstash.elk.svc.cluster.local:5001";  // Use Kubernetes service name
 
     Log.Logger = new LoggerConfiguration()
-        .ReadFrom.Configuration(configuration)
+        .ReadFrom.Configuration(builder.Configuration)  // This reads from appsettings.json
         .Enrich.FromLogContext()
         .Enrich.WithProperty("Application", "IntegratedAPI")
         .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
+        .Enrich.WithMachineName()
+        .Enrich.WithProcessId()
 
-        // Console output
+        // Console output (for local debugging)
         .WriteTo.Console(
             outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
 
         // Debug output
         .WriteTo.Debug()
 
-        // Send to Logstash - WORKING WITH REQUIRED PARAMETER
+        // HTTP sink to Logstash - Use ElasticsearchJsonFormatter for proper JSON
         .WriteTo.Http(
             requestUri: logstashUrl,
-            queueLimitBytes: null)
+            queueLimitBytes: null,
+            textFormatter: new ElasticsearchJsonFormatter())  // CRITICAL: This creates proper JSON
+
+        // Optional: Direct Elasticsearch sink (remove or configure properly)
+        /*.WriteTo.Elasticsearch(new ElasticsearchSinkOptions(
+            new Uri("http://elasticsearch.elk.svc.cluster.local:9200"))
+        {
+            AutoRegisterTemplate = true,
+            IndexFormat = "integratedapi-direct-{0:yyyy.MM.dd}",
+            AutoRegisterTemplateVersion = AutoRegisterTemplateVersion.ESv7
+        })*/
 
         .CreateLogger();
 }

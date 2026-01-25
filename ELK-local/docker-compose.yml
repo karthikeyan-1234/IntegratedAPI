@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.19.2
+    image: elasticsearch:8.19.2
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
@@ -21,7 +21,7 @@ services:
       retries: 3
 
   logstash:
-    image: docker.elastic.co/logstash/logstash:8.19.2
+    image: logstash:8.19.2
     container_name: logstash
     volumes:
       - ./logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
@@ -37,7 +37,7 @@ services:
       - elk-network
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.19.2
+    image: kibana:8.19.2
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200

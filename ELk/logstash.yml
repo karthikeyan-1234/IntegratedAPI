@@ -1,0 +1,171 @@
+# ============================================================================
+# Logstash - Dev / Docker Desktop
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Logstash Pipeline Config
+# ----------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline
+  namespace: elk
+data:
+  logstash.conf: |
+    input {
+      http {
+        port => 5001
+        codec => json
+      }
+    }
+
+    filter {
+      mutate {
+        add_field => { "environment" => "dev" }
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch.elk.svc.cluster.local:9200"]
+        index => "logs-dev-%{+YYYY.MM.dd}"
+      }
+      stdout { codec => rubydebug }
+    }
+
+---
+
+# ----------------------------------------------------------------------------
+# Logstash Deployment
+# ----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: elk
+  labels:
+    app: logstash
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: logstash
+          image: docker.elastic.co/logstash/logstash:8.19.2
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 5001
+              name: http-input
+
+          env:
+            - name: LS_JAVA_OPTS
+              value: "-Xms256m -Xmx256m"
+
+            - name: XPACK_MONITORING_ENABLED
+              value: "false"
+
+          volumeMounts:
+            - name: pipeline
+              mountPath: /usr/share/logstash/pipeline/logstash.conf
+              subPath: logstash.conf
+
+            - name: logstash-data
+              mountPath: /usr/share/logstash/data
+
+          readinessProbe:
+            tcpSocket:
+              port: 5001
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+          livenessProbe:
+            tcpSocket:
+              port: 5001
+            initialDelaySeconds: 30
+            periodSeconds: 20
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+
+      volumes:
+        - name: pipeline
+          configMap:
+            name: logstash-pipeline
+
+        - name: logstash-data
+          persistentVolumeClaim:
+            claimName: logstash-pvc
+
+---
+
+# ----------------------------------------------------------------------------
+# Logstash PVC
+# ----------------------------------------------------------------------------
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: logstash-pvc
+  namespace: elk
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+
+# ----------------------------------------------------------------------------
+# Logstash Service
+# ----------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  namespace: elk
+  labels:
+    app: logstash
+spec:
+  selector:
+    app: logstash
+  ports:
+    - name: http-input
+      port: 5001
+      targetPort: 5001
+
+---
+
+# ----------------------------------------------------------------------------
+# Logstash Ingress (nginx)
+# ----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: logstash-ingress
+  namespace: elk
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: logstash.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: logstash
+                port:
+                  number: 5001

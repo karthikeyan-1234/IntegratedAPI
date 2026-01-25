@@ -1,0 +1,108 @@
+# ============================================================================
+# Kibana - Dev / Docker Desktop
+# ============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: elk
+  labels:
+    app: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: kibana
+          image: docker.elastic.co/kibana/kibana:8.19.2
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 5601
+              name: http
+
+          env:
+            # ---- Elasticsearch connection ----
+            - name: ELASTICSEARCH_HOSTS
+              value: "http://elasticsearch.elk.svc.cluster.local:9200"
+
+            # ---- Disable security (must match Elasticsearch) ----
+            - name: XPACK_SECURITY_ENABLED
+              value: "false"
+            - name: XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY
+              value: "dev-only-encryption-key-32chars!!"
+
+            # ---- Reduce memory footprint ----
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=512"
+
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 5601
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /api/status
+              port: 5601
+            initialDelaySeconds: 60
+            periodSeconds: 20
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: elk
+  labels:
+    app: kibana
+spec:
+  selector:
+    app: kibana
+  ports:
+    - name: http
+      port: 5601
+      targetPort: 5601
+
+---
+
+# ----------------------------------------------------------------------------
+# Kibana Ingress (nginx)
+# ----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kibana-ingress
+  namespace: elk
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: kibana.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kibana
+                port:
+                  number: 5601
