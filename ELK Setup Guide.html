@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELK Stack Setup Guide - Docker Desktop Kubernetes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        nav {
+            background: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        nav h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        nav ul {
+            list-style: none;
+        }
+        
+        nav ul li {
+            margin: 8px 0;
+        }
+        
+        nav a {
+            color: #555;
+            text-decoration: none;
+            display: block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        
+        nav a:hover {
+            background: #667eea;
+            color: white;
+            padding-left: 15px;
+        }
+        
+        section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        h3 {
+            color: #764ba2;
+            margin: 20px 0 10px 0;
+        }
+        
+        .command-box {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 15px 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .command-box .comment {
+            color: #6a9955;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .success-box {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 6px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .step-number {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #c7254e;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .github-link {
+            display: inline-block;
+            background: #24292e;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin: 10px 0;
+        }
+        
+        .github-link:hover {
+            background: #667eea;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            margin-top: 40px;
+            border-top: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🔍 ELK Stack Setup Guide</h1>
+        <p>Complete guide for deploying Elasticsearch, Logstash, and Kibana on Docker Desktop Kubernetes</p>
+    </header>
+
+    <div class="container">
+        <nav id="index">
+            <h2>📑 Table of Contents</h2>
+            <ul>
+                <li><a href="#prerequisites">1. Prerequisites</a></li>
+                <li><a href="#hosts-file">2. Configure Hosts File</a></li>
+                <li><a href="#nginx-ingress">3. Deploy NGINX Ingress Controller</a></li>
+                <li><a href="#elk-deployment">4. Deploy ELK Stack</a></li>
+                <li><a href="#verification">5. Verification & Testing</a></li>
+                <li><a href="#kibana-setup">6. Kibana Configuration</a></li>
+                <li><a href="#dotnet-integration">7. .NET API Integration</a></li>
+                <li><a href="#troubleshooting">8. Troubleshooting</a></li>
+            </ul>
+        </nav>
+
+        <!-- PREREQUISITES -->
+        <section id="prerequisites">
+            <h2>1. Prerequisites</h2>
+            
+            <h3>Required Software</h3>
+            <ul>
+                <li>Docker Desktop with Kubernetes enabled</li>
+                <li>kubectl CLI installed and configured</li>
+                <li>Git (to clone the repository)</li>
+                <li>Administrator access (for editing hosts file)</li>
+            </ul>
+
+            <h3>Enable Kubernetes in Docker Desktop</h3>
+            <div class="step">
+                <span class="step-number">1</span>
+                Open Docker Desktop → Settings → Kubernetes → Enable Kubernetes
+            </div>
+            <div class="step">
+                <span class="step-number">2</span>
+                Wait for Kubernetes to start (green icon in bottom-left)
+            </div>
+
+            <h3>Verify Installation</h3>
+            <div class="command-box">
+kubectl cluster-info
+kubectl get nodes
+            </div>
+
+            <div class="success-box">
+                ✅ You should see your Docker Desktop node in a <strong>Ready</strong> state
+            </div>
+        </section>
+
+        <!-- HOSTS FILE -->
+        <section id="hosts-file">
+            <h2>2. Configure Hosts File</h2>
+            
+            <div class="info-box">
+                <strong>Location:</strong> <code>C:\Windows\System32\drivers\etc\hosts</code> (Windows)
+            </div>
+
+            <h3>Add ELK Stack Entries</h3>
+            <div class="step">
+                <span class="step-number">1</span>
+                Open Notepad as Administrator
+            </div>
+            <div class="step">
+                <span class="step-number">2</span>
+                Open the hosts file from the location above
+            </div>
+            <div class="step">
+                <span class="step-number">3</span>
+                Add the following entries:
+            </div>
+
+            <div class="command-box">
+<span class="comment"># ELK Stack Services</span>
+127.0.0.1 elasticsearch.local
+127.0.0.1 kibana.local
+127.0.0.1 logstash.local
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                Save the file
+            </div>
+
+            <h3>Verify Hosts File</h3>
+            <div class="command-box">
+ping elasticsearch.local
+            </div>
+            <div class="success-box">
+                ✅ Should resolve to 127.0.0.1
+            </div>
+        </section>
+
+        <!-- NGINX INGRESS -->
+        <section id="nginx-ingress">
+            <h2>3. Deploy NGINX Ingress Controller</h2>
+            
+            <div class="info-box">
+                The NGINX Ingress Controller routes external traffic to your Kubernetes services based on hostnames.
+            </div>
+
+            <h3>Deploy NGINX</h3>
+            <div class="command-box">
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
+            </div>
+
+            <h3>Wait for NGINX to be Ready</h3>
+            <div class="command-box">
+kubectl wait --namespace ingress-nginx \
+  --for=condition=ready pod \
+  --selector=app.kubernetes.io/component=controller \
+  --timeout=120s
+            </div>
+
+            <h3>Verify NGINX Deployment</h3>
+            <div class="command-box">
+kubectl get pods -n ingress-nginx
+            </div>
+
+            <div class="success-box">
+                ✅ The <code>ingress-nginx-controller</code> pod should be in <strong>Running</strong> state
+            </div>
+        </section>
+
+        <!-- ELK DEPLOYMENT -->
+        <section id="elk-deployment">
+            <h2>4. Deploy ELK Stack</h2>
+            
+            <div class="info-box">
+                <strong>GitHub Repository:</strong><br>
+                <a href="https://github.com/karthikeyan-1234/IntegratedAPI/tree/master/ELk" class="github-link" target="_blank">
+                    📁 View ELK YML Files on GitHub
+                </a>
+            </div>
+
+            <h3>Clone the Repository</h3>
+            <div class="command-box">
+git clone https://github.com/karthikeyan-1234/IntegratedAPI.git
+cd IntegratedAPI/ELk
+            </div>
+
+            <h3>Pre-pull Docker Images</h3>
+            <div class="warning-box">
+                ⚠️ Docker Desktop may have issues pulling images during deployment. Pre-pull them to avoid failures.
+            </div>
+
+            <div class="command-box">
+docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+docker pull docker.elastic.co/logstash/logstash:8.11.0
+docker pull docker.elastic.co/kibana/kibana:8.11.0
+            </div>
+
+            <h3>Deploy in Order</h3>
+            
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Create Namespace</strong>
+                <div class="command-box">
+kubectl apply -f namespace.yml
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>Deploy Elasticsearch</strong>
+                <div class="command-box">
+kubectl apply -f elasticsearch.yml
+
+<span class="comment"># Wait for Elasticsearch to be ready</span>
+kubectl wait --for=condition=ready pod -l app=elasticsearch -n elk --timeout=300s
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Deploy Logstash</strong>
+                <div class="command-box">
+kubectl apply -f logstash.yml
+
+<span class="comment"># Wait for Logstash to be ready</span>
+kubectl wait --for=condition=ready pod -l app=logstash -n elk --timeout=180s
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                <strong>Deploy Kibana</strong>
+                <div class="command-box">
+kubectl apply -f kibana.yml
+
+<span class="comment"># Monitor Kibana startup (it takes 1-2 minutes)</span>
+kubectl get pods -n elk -w
+                </div>
+            </div>
+
+            <h3>Verify All Pods Running</h3>
+            <div class="command-box">
+kubectl get pods -n elk
+            </div>
+
+            <div class="success-box">
+                ✅ All three pods should show <strong>1/1 Running</strong>
+            </div>
+        </section>
+
+        <!-- VERIFICATION -->
+        <section id="verification">
+            <h2>5. Verification & Testing</h2>
+            
+            <h3>Check Services</h3>
+            <div class="command-box">
+kubectl get svc -n elk
+kubectl get ingress -n elk
+            </div>
+
+            <h3>Test Elasticsearch</h3>
+            <div class="command-box">
+<span class="comment"># PowerShell</span>
+Invoke-WebRequest -Uri http://elasticsearch.local/_cat/indices?v
+            </div>
+
+            <h3>Test Logstash</h3>
+            <div class="command-box">
+<span class="comment"># PowerShell - Send test log</span>
+Invoke-WebRequest -Uri http://logstash.local/ `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"message":"test log","level":"info"}'
+            </div>
+
+            <div class="success-box">
+                ✅ Should return <strong>StatusCode: 200</strong> with content "ok"
+            </div>
+
+            <h3>Verify Log in Elasticsearch</h3>
+            <div class="command-box">
+<span class="comment"># Wait a few seconds, then check</span>
+Invoke-WebRequest -Uri "http://elasticsearch.local/logstash-*/_search?pretty" | Select-Object -ExpandProperty Content
+            </div>
+
+            <div class="success-box">
+                ✅ You should see your test log in the response
+            </div>
+
+            <h3>Access Kibana</h3>
+            <div class="info-box">
+                Open your browser and navigate to: <strong>http://kibana.local</strong>
+            </div>
+        </section>
+
+        <!-- KIBANA SETUP -->
+        <section id="kibana-setup">
+            <h2>6. Kibana Configuration</h2>
+            
+            <h3>Create Data View</h3>
+            <div class="step">
+                <span class="step-number">1</span>
+                In Kibana, click the hamburger menu (☰) → <strong>Management</strong> → <strong>Stack Management</strong>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                Under <strong>Kibana</strong>, click <strong>Data Views</strong>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                Click <strong>Create data view</strong>
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                Configure the data view:
+                <table>
+                    <tr>
+                        <th>Field</th>
+                        <th>Value</th>
+                    </tr>
+                    <tr>
+                        <td>Name</td>
+                        <td>Logstash Logs</td>
+                    </tr>
+                    <tr>
+                        <td>Index pattern</td>
+                        <td><code>logstash-*</code></td>
+                    </tr>
+                    <tr>
+                        <td>Timestamp field</td>
+                        <td>@timestamp</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="step">
+                <span class="step-number">5</span>
+                Click <strong>Save data view to Kibana</strong>
+            </div>
+
+            <h3>View Logs in Discover</h3>
+            <div class="step">
+                <span class="step-number">1</span>
+                Click hamburger menu (☰) → <strong>Analytics</strong> → <strong>Discover</strong>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                Select <strong>Logstash Logs</strong> data view
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                You should see your logs!
+            </div>
+
+            <h3>Customize Columns (Optional)</h3>
+            <div class="info-box">
+                Click the <strong>+</strong> button next to these fields to add them as columns:
+                <ul>
+                    <li><code>@timestamp</code></li>
+                    <li><code>level</code></li>
+                    <li><code>message</code></li>
+                    <li><code>fields.RequestPath</code> (for API endpoints)</li>
+                    <li><code>fields.StatusCode</code></li>
+                    <li><code>host.ip</code></li>
+                </ul>
+                Click <strong>Save</strong> to save your customized view.
+            </div>
+        </section>
+
+        <!-- .NET INTEGRATION -->
+        <section id="dotnet-integration">
+            <h2>7. .NET API Integration</h2>
+            
+            <h3>appsettings.json Configuration</h3>
+            <div class="info-box">
+                Ensure your <code>appsettings.json</code> or <code>appsettings.Development.json</code> contains:
+            </div>
+
+            <div class="command-box">
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information"
+    },
+    "Logstash": {
+      "Url": "http://logstash.local/"
+    }
+  }
+}
+            </div>
+
+            <h3>Test .NET API Logging</h3>
+            <div class="step">
+                <span class="step-number">1</span>
+                Start your .NET API from Visual Studio
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                Call the diagnostic endpoint (replace <code>&lt;port&gt;</code> with your API port):
+                <div class="command-box">
+<span class="comment"># PowerShell</span>
+Invoke-WebRequest -Uri http://localhost:&lt;port&gt;/diagnostics/logs
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                Wait a few seconds, then check Elasticsearch:
+                <div class="command-box">
+Invoke-WebRequest -Uri "http://elasticsearch.local/logstash-*/_search?pretty&size=20&sort=@timestamp:desc" | Select-Object -ExpandProperty Content
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                View logs in Kibana Discover
+            </div>
+
+            <h3>Filter API Logs in Kibana</h3>
+            <div class="info-box">
+                In Kibana Discover search bar, enter: <code>fields.Application:"IntegratedAPI"</code>
+            </div>
+
+            <div class="success-box">
+                ✅ All logs from your controllers using <code>ILogger&lt;T&gt;</code> will now appear in Kibana with proper log levels (Debug, Info, Warning, Error, etc.)
+            </div>
+        </section>
+
+        <!-- TROUBLESHOOTING -->
+        <section id="troubleshooting">
+            <h2>8. Troubleshooting</h2>
+            
+            <h3>Pod Not Starting / ImagePullBackOff</h3>
+            <div class="warning-box">
+                <strong>Problem:</strong> Pods stuck in <code>ImagePullBackOff</code> or <code>Pending</code>
+            </div>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                Check pod status:
+                <div class="command-box">
+kubectl describe pod -l app=elasticsearch -n elk
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                Pre-pull images manually:
+                <div class="command-box">
+docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+docker pull docker.elastic.co/logstash/logstash:8.11.0
+docker pull docker.elastic.co/kibana/kibana:8.11.0
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                Delete and recreate the deployment:
+                <div class="command-box">
+kubectl delete -f elasticsearch.yml
+kubectl apply -f elasticsearch.yml
+                </div>
+            </div>
+
+            <h3>Logstash CrashLoopBackOff</h3>
+            <div class="warning-box">
+                <strong>Problem:</strong> Logstash pod keeps restarting
+            </div>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                Check logs:
+                <div class="command-box">
+kubectl logs -n elk -l app=logstash --tail=50
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                Ensure the YAML file is correct (no config file mount issues)
+            </div>
+
+            <h3>Cannot Access Services (http://elasticsearch.local not working)</h3>
+            <div class="warning-box">
+                <strong>Problem:</strong> Services not accessible via browser
+            </div>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                Verify NGINX Ingress Controller is running:
+                <div class="command-box">
+kubectl get pods -n ingress-nginx
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                Check hosts file entries are correct
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                Verify ingress resources:
+                <div class="command-box">
+kubectl get ingress -n elk
+kubectl describe ingress elasticsearch-ingress -n elk
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                As a workaround, use port-forwarding:
+                <div class="command-box">
+kubectl port-forward -n elk svc/elasticsearch 9200:9200
+kubectl port-forward -n elk svc/logstash 5001:5001
+kubectl port-forward -n elk svc/kibana 5601:5601
+                </div>
+                Then access via <code>localhost:9200</code>, <code>localhost:5001</code>, <code>localhost:5601</code>
+            </div>
+
+            <h3>No Logs Appearing in Kibana</h3>
+            <div class="warning-box">
+                <strong>Problem:</strong> Logs not visible in Kibana Discover
+            </div>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                Check if indices exist in Elasticsearch:
+                <div class="command-box">
+Invoke-WebRequest -Uri http://elasticsearch.local/_cat/indices?v
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                Verify data view index pattern is correct (<code>logstash-*</code>)
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                Check time range in Kibana (top-right corner) - set to "Last 15 minutes" or "Today"
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                Send a test log and verify it reaches Elasticsearch:
+                <div class="command-box">
+Invoke-WebRequest -Uri http://logstash.local/ `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"message":"troubleshooting test","level":"info"}'
+
+<span class="comment"># Wait 10 seconds</span>
+Start-Sleep -Seconds 10
+
+<span class="comment"># Query Elasticsearch</span>
+Invoke-WebRequest -Uri "http://elasticsearch.local/logstash-*/_search?q=troubleshooting&pretty"
+                </div>
+            </div>
+
+            <h3>.NET API Logs Not Appearing</h3>
+            <div class="warning-box">
+                <strong>Problem:</strong> .NET API logs not showing in Kibana
+            </div>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                Verify Logstash URL in appsettings.json: <code>"Url": "http://logstash.local/"</code>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                Check API can reach Logstash:
+                <div class="command-box">
+Invoke-WebRequest -Uri http://localhost:&lt;api-port&gt;/diagnostics/logstash
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                Verify Serilog is configured correctly in Program.cs (using <code>ElasticsearchJsonFormatter</code>)
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                Check console output in Visual Studio for Serilog errors
+            </div>
+
+            <h3>Useful Diagnostic Commands</h3>
+            <div class="command-box">
+<span class="comment"># View all resources in elk namespace</span>
+kubectl get all -n elk
+
+<span class="comment"># Check pod logs</span>
+kubectl logs -n elk &lt;pod-name&gt;
+
+<span class="comment"># Describe a pod for detailed status</span>
+kubectl describe pod -n elk &lt;pod-name&gt;
+
+<span class="comment"># Check events in namespace</span>
+kubectl get events -n elk --sort-by='.lastTimestamp'
+
+<span class="comment"># Restart a deployment</span>
+kubectl rollout restart deployment/logstash -n elk
+
+<span class="comment"># Delete all ELK resources and start fresh</span>
+kubectl delete namespace elk
+            </div>
+        </section>
+
+        <footer>
+            <p>✨ ELK Stack successfully deployed on Docker Desktop Kubernetes ✨</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">
+                <a href="https://github.com/karthikeyan-1234/IntegratedAPI" target="_blank" style="color: #667eea;">View Project on GitHub</a>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
