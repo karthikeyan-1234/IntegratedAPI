@@ -1,9 +1,9 @@
 # ============================================================================
-# Logstash - Dev / Docker Desktop
+# Logstash - Complete Configuration (Dev / Docker Desktop)
 # ============================================================================
 
 # ----------------------------------------------------------------------------
-# Logstash Pipeline Config
+# ConfigMap: Logstash Pipeline Configuration
 # ----------------------------------------------------------------------------
 apiVersion: v1
 kind: ConfigMap
@@ -16,27 +16,58 @@ data:
       http {
         port => 5001
         codec => json
+        response_headers => {
+          "Access-Control-Allow-Origin" => "*"
+          "Access-Control-Allow-Methods" => "GET, POST, OPTIONS"
+          "Access-Control-Allow-Headers" => "Content-Type"
+        }
       }
     }
-
+    
     filter {
-      mutate {
-        add_field => { "environment" => "dev" }
+      # Add timestamp if not present
+      if ![timestamp] {
+        mutate {
+          add_field => { "timestamp" => "%{@timestamp}" }
+        }
+      }
+      
+      # Parse JSON if it's a string
+      if [message] =~ /^\{.*\}$/ {
+        json {
+          source => "message"
+        }
       }
     }
-
+    
     output {
+      # Console for debugging
+      stdout {
+        codec => rubydebug
+      }
+      
+      # Elasticsearch output
       elasticsearch {
         hosts => ["http://elasticsearch.elk.svc.cluster.local:9200"]
-        index => "logs-dev-%{+YYYY.MM.dd}"
+        index => "logstash-%{+YYYY.MM.dd}"
+        
+        # Disable template management for simplicity
+        manage_template => false
+        
+        # Document type
+        document_type => "_doc"
+        
+        # Retry settings
+        retry_initial_interval => 2
+        retry_max_interval => 64
+        retry_on_conflict => 3
       }
-      stdout { codec => rubydebug }
     }
 
 ---
 
 # ----------------------------------------------------------------------------
-# Logstash Deployment
+# Deployment: Logstash
 # ----------------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
@@ -58,78 +89,75 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: logstash
-          image: docker.elastic.co/logstash/logstash:8.19.2
+          image: docker.elastic.co/logstash/logstash:8.11.0
           imagePullPolicy: IfNotPresent
-
+          
           ports:
             - containerPort: 5001
-              name: http-input
-
+              name: http
+              protocol: TCP
+            - containerPort: 9600
+              name: monitoring
+              protocol: TCP
+          
           env:
+            # JVM settings
             - name: LS_JAVA_OPTS
-              value: "-Xms256m -Xmx256m"
-
+              value: "-Xms512m -Xmx512m"
+            
+            # Elasticsearch connection
+            - name: ELASTICSEARCH_HOSTS
+              value: "http://elasticsearch.elk.svc.cluster.local:9200"
+            
+            # Pipeline settings
+            - name: PIPELINE_BATCH_SIZE
+              value: "125"
+            - name: PIPELINE_BATCH_DELAY
+              value: "50"
+            
+            # Disable monitoring to avoid config file issues
             - name: XPACK_MONITORING_ENABLED
               value: "false"
-
+          
           volumeMounts:
-            - name: pipeline
-              mountPath: /usr/share/logstash/pipeline/logstash.conf
-              subPath: logstash.conf
-
-            - name: logstash-data
-              mountPath: /usr/share/logstash/data
-
+            - name: logstash-pipeline
+              mountPath: /usr/share/logstash/pipeline
+          
           readinessProbe:
-            tcpSocket:
-              port: 5001
-            initialDelaySeconds: 15
-            periodSeconds: 10
-
-          livenessProbe:
-            tcpSocket:
-              port: 5001
+            httpGet:
+              path: /
+              port: 9600
             initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9600
+            initialDelaySeconds: 60
             periodSeconds: 20
-
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
           resources:
             requests:
-              cpu: "100m"
-              memory: "512Mi"
+              cpu: "200m"
+              memory: "768Mi"
             limits:
-              cpu: "500m"
-              memory: "1Gi"
-
+              cpu: "1"
+              memory: "1.5Gi"
+      
       volumes:
-        - name: pipeline
+        - name: logstash-pipeline
           configMap:
             name: logstash-pipeline
 
-        - name: logstash-data
-          persistentVolumeClaim:
-            claimName: logstash-pvc
-
 ---
 
 # ----------------------------------------------------------------------------
-# Logstash PVC
-# ----------------------------------------------------------------------------
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: logstash-pvc
-  namespace: elk
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
-
----
-
-# ----------------------------------------------------------------------------
-# Logstash Service
+# Service: Logstash
 # ----------------------------------------------------------------------------
 apiVersion: v1
 kind: Service
@@ -142,20 +170,34 @@ spec:
   selector:
     app: logstash
   ports:
-    - name: http-input
+    - name: http
       port: 5001
       targetPort: 5001
+      protocol: TCP
+    - name: monitoring
+      port: 9600
+      targetPort: 9600
+      protocol: TCP
 
 ---
 
 # ----------------------------------------------------------------------------
-# Logstash Ingress (nginx)
+# Ingress: Logstash
 # ----------------------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: logstash-ingress
   namespace: elk
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # Increase timeout for log ingestion
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    # Enable CORS for external apps
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
 spec:
   ingressClassName: nginx
   rules:

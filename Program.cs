@@ -264,6 +264,64 @@ lifetime.ApplicationStarted.Register(() =>
 
 app.UseExceptionHandler();
 
+
+
+
+#region Test LogStash connectivity
+// Add this before app.Run()
+app.MapGet("/diagnostics/logs", (ILogger<Program> logger, IConfiguration config) =>
+{
+    var logstashUrl = config["Logging:Logstash:Url"] ?? "Not configured";
+
+    // Log different levels
+    logger.LogTrace("This is a TRACE message");
+    logger.LogDebug("This is a DEBUG message");
+    logger.LogInformation("This is an INFO message at {Time}", DateTime.UtcNow);
+    logger.LogWarning("This is a WARNING message");
+    logger.LogError(new InvalidOperationException("Test exception"), "This is an ERROR message");
+    logger.LogCritical("This is a CRITICAL message");
+
+    // Return diagnostic info
+    return Results.Ok(new
+    {
+        Status = "Logs sent",
+        LogstashUrl = logstashUrl,
+        Timestamp = DateTime.UtcNow,
+        LogLevels = new[] { "Trace", "Debug", "Info", "Warning", "Error", "Critical" }
+    });
+});
+
+app.MapGet("/diagnostics/logstash", async (IConfiguration config) =>
+{
+    var logstashUrl = config["Logging:Logstash:Url"];
+
+    if (string.IsNullOrEmpty(logstashUrl))
+    {
+        return Results.Problem("Logstash URL not configured");
+    }
+
+    try
+    {
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+        var response = await client.GetAsync(logstashUrl);
+        var content = await response.Content.ReadAsStringAsync();
+
+        return Results.Ok(new
+        {
+            Url = logstashUrl,
+            StatusCode = (int)response.StatusCode,
+            Status = response.StatusCode.ToString(),
+            Response = content,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to connect: {ex.Message}");
+    }
+});
+#endregion
+
 app.Run();
 
 
@@ -273,7 +331,7 @@ void ConfigureLogs()
 {
     // Use the existing builder.Configuration, don't create a new one
     var logstashUrl = builder.Configuration["Logging:Logstash:Url"]
-        ?? "http://logstash.elk.svc.cluster.local:5001";  // Use Kubernetes service name
+        ?? "http://logstash.local/";  // Default to Ingress URL for local dev
 
     Log.Logger = new LoggerConfiguration()
         .ReadFrom.Configuration(builder.Configuration)  // This reads from appsettings.json
@@ -282,6 +340,7 @@ void ConfigureLogs()
         .Enrich.WithProperty("Environment", builder.Environment.EnvironmentName)
         .Enrich.WithMachineName()
         .Enrich.WithProcessId()
+        .Enrich.WithProperty("Source", "Program")
 
         // Console output (for local debugging)
         .WriteTo.Console(
@@ -294,8 +353,9 @@ void ConfigureLogs()
         .WriteTo.Http(
             requestUri: logstashUrl,
             queueLimitBytes: null,
-            textFormatter: new ElasticsearchJsonFormatter())  // CRITICAL: This creates proper JSON
-
+            period: TimeSpan.FromSeconds(5),
+            textFormatter: new ElasticsearchJsonFormatter()  // CRITICAL: This creates proper JSON
+            )
         // Optional: Direct Elasticsearch sink (remove or configure properly)
         /*.WriteTo.Elasticsearch(new ElasticsearchSinkOptions(
             new Uri("http://elasticsearch.elk.svc.cluster.local:9200"))
@@ -309,3 +369,4 @@ void ConfigureLogs()
 }
 
 #endregion
+
