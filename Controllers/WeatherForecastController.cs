@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IntegratedAPI.Controllers
@@ -19,6 +20,7 @@ namespace IntegratedAPI.Controllers
         }
 
         [HttpGet(Name = "GetWeatherForecast")]
+        [AllowAnonymous]
         public IEnumerable<WeatherForecast> Get()
         {
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast
