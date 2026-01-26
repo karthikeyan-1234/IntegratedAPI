@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>.NET API Monitoring with Prometheus & Grafana</title>
+    <title>.NET API Monitoring with Prometheus & Grafana on Kubernetes</title>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -15,6 +15,9 @@
             --dark-color: #2c3e50;
             --code-bg: #f8f9fa;
             --border-color: #dee2e6;
+            --k8s-blue: #326ce5;
+            --prometheus-orange: #e6522c;
+            --grafana-orange: #f46800;
         }
         
         * {
@@ -27,47 +30,118 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            background-color: #f5f7fa;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 20px;
-            max-width: 1200px;
+        }
+        
+        .wrapper {
+            max-width: 1400px;
             margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
         }
         
         header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, var(--k8s-blue), var(--primary-color));
             color: white;
-            padding: 2rem;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 3rem 2rem;
+            text-align: center;
         }
         
         h1 {
-            font-size: 2.5rem;
+            font-size: 2.8rem;
             margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
         
         .subtitle {
-            font-size: 1.2rem;
-            opacity: 0.9;
+            font-size: 1.3rem;
+            opacity: 0.95;
+            margin-bottom: 1rem;
         }
         
-        .container {
-            display: grid;
-            grid-template-columns: 1fr;
+        .tech-stack {
+            display: flex;
+            justify-content: center;
             gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .tech-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            font-weight: bold;
+            backdrop-filter: blur(10px);
+        }
+        
+        nav {
+            background: var(--dark-color);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .nav-links a:hover {
+            background: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+        
+        .content {
+            padding: 2rem;
+        }
+        
+        .section {
+            margin-bottom: 3rem;
+            scroll-margin-top: 80px;
         }
         
         .card {
             background: white;
             border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             border-left: 5px solid var(--secondary-color);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .index-card {
+            border-left-color: var(--k8s-blue);
         }
         
         .prerequisites-card {
             border-left-color: var(--warning-color);
+        }
+        
+        .architecture-card {
+            border-left-color: var(--prometheus-orange);
         }
         
         .step-card {
@@ -78,93 +152,124 @@
             border-left-color: var(--danger-color);
         }
         
+        .dashboard-card {
+            border-left-color: var(--grafana-orange);
+        }
+        
         h2 {
             color: var(--primary-color);
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--light-color);
+            border-bottom: 3px solid var(--light-color);
+            font-size: 2rem;
         }
         
         h3 {
             color: var(--secondary-color);
+            margin: 2rem 0 1rem 0;
+            font-size: 1.5rem;
+        }
+        
+        h4 {
+            color: var(--dark-color);
             margin: 1.5rem 0 0.5rem 0;
+            font-size: 1.2rem;
         }
         
         .step-number {
             display: inline-block;
-            background-color: var(--secondary-color);
+            background: linear-gradient(135deg, var(--secondary-color), var(--k8s-blue));
             color: white;
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             text-align: center;
-            line-height: 30px;
-            margin-right: 10px;
+            line-height: 40px;
+            margin-right: 15px;
             font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        .architecture-diagram {
+            background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
         }
         
         .file-header {
-            background-color: #2c3e50;
+            background: linear-gradient(135deg, #2c3e50, #34495e);
             color: white;
-            padding: 8px 15px;
-            border-radius: 5px 5px 0 0;
+            padding: 12px 20px;
+            border-radius: 8px 8px 0 0;
             font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            margin-top: 1rem;
+            font-size: 0.95rem;
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .code-block {
             background-color: var(--code-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 0 0 5px 5px;
-            padding: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 0 0 8px 8px;
+            padding: 1.5rem;
             overflow-x: auto;
             font-family: 'Courier New', monospace;
-            font-size: 0.95rem;
-            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
         }
         
-        .yaml-key { color: #22863a; }
+        .yaml-key { color: #22863a; font-weight: bold; }
         .yaml-value { color: #005cc5; }
-        .yaml-number { color: #005cc5; }
         .yaml-string { color: #032f62; }
-        
-        .powershell-cmd { color: #d73a49; }
+        .yaml-comment { color: #6a737d; font-style: italic; }
+        .powershell-cmd { color: #d73a49; font-weight: bold; }
         .powershell-comment { color: #6a737d; font-style: italic; }
+        
+        .note, .warning, .success, .info {
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            border-left: 5px solid;
+        }
         
         .note {
             background-color: #e7f3ff;
-            border-left: 4px solid var(--secondary-color);
-            padding: 1rem;
-            margin: 1rem 0;
-            border-radius: 0 5px 5px 0;
+            border-left-color: var(--secondary-color);
         }
         
         .warning {
             background-color: #fff3cd;
-            border-left: 4px solid var(--warning-color);
-            padding: 1rem;
-            margin: 1rem 0;
-            border-radius: 0 5px 5px 0;
+            border-left-color: var(--warning-color);
         }
         
         .success {
             background-color: #d1e7dd;
-            border-left: 4px solid var(--success-color);
-            padding: 1rem;
-            margin: 1rem 0;
-            border-radius: 0 5px 5px 0;
+            border-left-color: var(--success-color);
+        }
+        
+        .info {
+            background-color: #d1ecf1;
+            border-left-color: #0c5460;
         }
         
         .checklist {
             list-style-type: none;
-            margin: 1rem 0;
+            margin: 1.5rem 0;
         }
         
         .checklist li {
-            padding: 0.5rem 0;
-            padding-left: 2rem;
+            padding: 0.8rem 0;
+            padding-left: 2.5rem;
             position: relative;
+            font-size: 1.05rem;
         }
         
         .checklist li:before {
@@ -173,404 +278,993 @@
             left: 0;
             color: var(--success-color);
             font-weight: bold;
+            font-size: 1.5rem;
         }
         
         .problem {
             background-color: #f8d7da;
-            border-left: 4px solid var(--danger-color);
-            padding: 1rem;
-            margin: 1rem 0;
-            border-radius: 0 5px 5px 0;
-        }
-        
-        .powershell-loop {
-            margin-top: 1rem;
-        }
-        
-        footer {
-            text-align: center;
-            margin-top: 3rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
-            color: #6c757d;
-            font-size: 0.9rem;
-        }
-        
-        .button-container {
-            display: flex;
-            justify-content: center;
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-        
-        .button {
-            display: inline-block;
-            padding: 0.8rem 1.5rem;
-            background-color: var(--secondary-color);
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            transition: background-color 0.3s;
-            border: none;
-            cursor: pointer;
-            font-size: 1rem;
-        }
-        
-        .button:hover {
-            background-color: var(--primary-color);
-        }
-        
-        .button-print {
-            background-color: var(--dark-color);
-        }
-        
-        .button-download {
-            background-color: var(--success-color);
-        }
-        
-        @media print {
-            .button-container {
-                display: none;
-            }
-            
-            .note, .warning, .success, .problem {
-                break-inside: avoid;
-            }
+            border-left: 5px solid var(--danger-color);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
         }
         
         .copy-btn {
             background-color: #6c757d;
             color: white;
             border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
+            padding: 6px 12px;
+            border-radius: 5px;
             cursor: pointer;
-            font-size: 0.8rem;
-            margin-top: 10px;
-            float: right;
+            font-size: 0.85rem;
+            transition: background-color 0.3s;
         }
         
         .copy-btn:hover {
             background-color: #5a6268;
         }
+        
+        .index-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .index-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .index-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .index-item h3 {
+            color: white;
+            margin: 0 0 0.5rem 0;
+        }
+        
+        .index-item p {
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0;
+        }
+        
+        footer {
+            background: var(--dark-color);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .data-flow-container {
+            background: white;
+            border: 3px solid var(--k8s-blue);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .component-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .k8s-component {
+            background: linear-gradient(135deg, var(--k8s-blue), #5a7fc7);
+        }
+        
+        .prometheus-component {
+            background: linear-gradient(135deg, var(--prometheus-orange), #d84315);
+        }
+        
+        .grafana-component {
+            background: linear-gradient(135deg, var(--grafana-orange), #e65100);
+        }
+        
+        .api-component {
+            background: linear-gradient(135deg, #27ae60, #229954);
+        }
+        
+        @media print {
+            nav {
+                display: none;
+            }
+            .card {
+                break-inside: avoid;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            .nav-links {
+                flex-direction: column;
+            }
+            .index-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        ol {
+            margin-left: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        ol li {
+            margin-bottom: 0.8rem;
+            line-height: 1.6;
+        }
+        
+        ul {
+            margin-left: 1.5rem;
+            margin-top: 1rem;
+        }
+        
+        ul li {
+            margin-bottom: 0.5rem;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #e74c3c;
+        }
+        
+        strong {
+            color: var(--primary-color);
+        }
+
+        .deployment-option {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1rem 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .deployment-option h4 {
+            color: white;
+            margin-top: 0;
+        }
     </style>
 </head>
 <body>
-    <header>
-        <h1>.NET API Monitoring with Prometheus & Grafana</h1>
-        <p class="subtitle">Simple Step-by-Step Guide for Real-Time API Monitoring</p>
-    </header>
-    
-    <div class="button-container">
-        <button class="button button-print" onclick="window.print()">Print Guide</button>
-        <button class="button button-download" onclick="downloadHTML()">Download HTML</button>
-    </div>
-    
-    <div class="container">
-        <div class="card prerequisites-card">
-            <h2>📋 PREREQUISITES</h2>
-            <p>Ensure you have these running before starting:</p>
-            <div class="checklist">
-                <li>.NET API running in Visual Studio on <strong>https://localhost:7216</strong></li>
-                <li>Docker Desktop installed and running</li>
-                <li>PowerShell with Administrator privileges</li>
+    <div class="wrapper">
+        <header>
+            <h1>🚀 .NET API Monitoring Guide</h1>
+            <p class="subtitle">Prometheus & Grafana on Kubernetes (Docker Desktop)</p>
+            <div class="tech-stack">
+                <span class="tech-badge">Kubernetes</span>
+                <span class="tech-badge">Prometheus v2.48.0</span>
+                <span class="tech-badge">Grafana v10.2.2</span>
+                <span class="tech-badge">.NET 10</span>
             </div>
-            
-            <div class="warning">
-                <strong>Important:</strong> Make sure your .NET API is configured to expose Prometheus metrics at the <code>/metrics</code> endpoint. This typically requires adding the <code>prometheus-net.AspNetCore</code> NuGet package.
-            </div>
-        </div>
+        </header>
         
-        <div class="card step-card">
-            <h2><span class="step-number">1</span> Create Folder Structure</h2>
-            <p>Open PowerShell as Administrator and run:</p>
-            
-            <div class="file-header">PowerShell Commands</div>
-            <div class="code-block">
-<span class="powershell-cmd">cd</span> C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI<br>
-<span class="powershell-cmd">mkdir</span> Prometheus-Grafana<br>
-<span class="powershell-cmd">cd</span> Prometheus-Grafana
+        <nav>
+            <div class="nav-links">
+                <a href="#index">📑 Index</a>
+                <a href="#prerequisites">✅ Prerequisites</a>
+                <a href="#hosts-file">🌐 Hosts File</a>
+                <a href="#architecture">🏗️ Architecture</a>
+                <a href="#setup">⚙️ Setup</a>
+                <a href="#dashboards">📊 Dashboards</a>
+                <a href="#troubleshooting">🔧 Troubleshooting</a>
             </div>
-            <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Commands</button>
-            
-            <div class="note">
-                <strong>Note:</strong> Adjust the path according to your project location.
-            </div>
-        </div>
+        </nav>
         
-        <div class="card step-card">
-            <h2><span class="step-number">2</span> Create docker-compose.yml</h2>
-            <p>Create a new file named <code>docker-compose.yml</code> with the following content:</p>
-            
-            <div class="file-header">docker-compose.yml</div>
-            <div class="code-block" id="docker-compose-content">
-<span class="yaml-key">version</span>: <span class="yaml-string">'3.8'</span><br>
-<br>
-<span class="yaml-key">services</span>:<br>
-&nbsp;&nbsp;<span class="yaml-key">prometheus</span>:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">image</span>: <span class="yaml-string">prom/prometheus:v2.48.0</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">container_name</span>: <span class="yaml-string">prometheus</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">volumes</span>:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-string">./prometheus.yml:/etc/prometheus/prometheus.yml</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">ports</span>:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-string">"9090:9090"</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">extra_hosts</span>:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-string">"host.docker.internal:host-gateway"</span><br>
-<br>
-&nbsp;&nbsp;<span class="yaml-key">grafana</span>:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">image</span>: <span class="yaml-string">grafana/grafana:10.2.2</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">container_name</span>: <span class="yaml-string">grafana</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">environment</span>:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-key">GF_SECURITY_ADMIN_PASSWORD</span>=<span class="yaml-string">admin</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">ports</span>:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-string">"3000:3000"</span>
-            </div>
-            <button class="copy-btn" onclick="copyToClipboard(document.getElementById('docker-compose-content'))">Copy YAML</button>
-        </div>
-        
-        <div class="card step-card">
-            <h2><span class="step-number">3</span> Create prometheus.yml</h2>
-            <p>Create a new file named <code>prometheus.yml</code> with the following content:</p>
-            
-            <div class="file-header">prometheus.yml</div>
-            <div class="code-block" id="prometheus-content">
-<span class="yaml-key">global</span>:<br>
-&nbsp;&nbsp;<span class="yaml-key">scrape_interval</span>: <span class="yaml-string">15s</span><br>
-<br>
-<span class="yaml-key">scrape_configs</span>:<br>
-&nbsp;&nbsp;- <span class="yaml-key">job_name</span>: <span class="yaml-string">'dotnet-api'</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">scheme</span>: <span class="yaml-string">https</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">metrics_path</span>: <span class="yaml-string">'/metrics'</span><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">static_configs</span>:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- <span class="yaml-key">targets</span>: [<span class="yaml-string">'host.docker.internal:7216'</span>]<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">tls_config</span>:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="yaml-key">insecure_skip_verify</span>: <span class="yaml-string">true</span>
-            </div>
-            <button class="copy-btn" onclick="copyToClipboard(document.getElementById('prometheus-content'))">Copy YAML</button>
-            
-            <div class="note">
-                <strong>Note:</strong> The <code>insecure_skip_verify: true</code> setting is required because we're using a self-signed certificate from localhost.
-            </div>
-        </div>
-        
-        <div class="card step-card">
-            <h2><span class="step-number">4</span> Start Containers</h2>
-            <p>Start the Prometheus and Grafana containers:</p>
-            
-            <div class="file-header">PowerShell Command</div>
-            <div class="code-block">
-<span class="powershell-cmd">docker-compose</span> up -d
-            </div>
-            <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Command</button>
-            
-            <p>Wait 30 seconds, then check if containers are running:</p>
-            
-            <div class="file-header">PowerShell Command</div>
-            <div class="code-block">
-<span class="powershell-cmd">docker</span> ps
-            </div>
-            <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Command</button>
-            
-            <p>Should show both containers running.</p>
-        </div>
-        
-        <div class="card step-card">
-            <h2><span class="step-number">5</span> Verify Prometheus is Scraping</h2>
-            <ol>
-                <li>Open browser: <a href="http://localhost:9090" target="_blank">http://localhost:9090</a></li>
-                <li>Click <strong>Status → Targets</strong></li>
-                <li>Look for <code>dotnet-api</code> with <strong>State: UP</strong> (green)</li>
-            </ol>
-            
-            <div class="warning">
-                If the state is DOWN, wait 30 more seconds and refresh the page.
-            </div>
-        </div>
-        
-        <div class="card step-card">
-            <h2><span class="step-number">6</span> Setup Grafana</h2>
-            <ol>
-                <li>Open browser: <a href="http://localhost:3000" target="_blank">http://localhost:3000</a></li>
-                <li>Login: <strong>admin</strong> / <strong>admin</strong></li>
-                <li>Click <strong>Configuration</strong> (gear icon) → <strong>Data Sources</strong></li>
-                <li>Click <strong>Add data source</strong></li>
-                <li>Select <strong>Prometheus</strong></li>
-                <li>Set URL: <code>http://prometheus:9090</code></li>
-                <li>Click <strong>Save & Test</strong></li>
-            </ol>
-            
-            <div class="success">
-                Should see "Data source is working" message.
-            </div>
-        </div>
-        
-        <div class="card step-card">
-            <h2><span class="step-number">7</span> Create Dashboard</h2>
-            
-            <h3>Create Dashboard</h3>
-            <ol>
-                <li>Click <strong>+</strong> (plus icon) → <strong>Dashboard</strong></li>
-                <li>Click <strong>Add visualization</strong></li>
-            </ol>
-            
-            <h3>Panel 1 - Request Rate</h3>
-            <ol>
-                <li>Query A: <code>rate(http_requests_received_total[1m])</code></li>
-                <li>Click <strong>Run query</strong> (top right)</li>
-                <li>See if you get data</li>
-                <li>Click <strong>Apply</strong></li>
-            </ol>
-            
-            <h3>Panel 2 - Memory Usage</h3>
-            <ol>
-                <li>Click <strong>Add panel</strong> (top right)</li>
-                <li>Query A: <code>process_private_memory_bytes / 1024 / 1024</code></li>
-                <li>Click <strong>Apply</strong></li>
-            </ol>
-            
-            <h3>Panel 3 - Response Time</h3>
-            <ol>
-                <li>Click <strong>Add panel</strong></li>
-                <li>Query A: <code>histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000</code></li>
-                <li>Click <strong>Apply</strong></li>
-            </ol>
-            
-            <h3>Save Dashboard</h3>
-            <ol>
-                <li>Click <strong>Save</strong> (top right)</li>
-                <li>Name: <strong>.NET API Metrics</strong></li>
-                <li>Click <strong>Save</strong></li>
-            </ol>
-        </div>
-        
-        <div class="card step-card">
-            <h2><span class="step-number">8</span> Generate Traffic</h2>
-            <p>In a NEW PowerShell window (regular user, not Administrator), run:</p>
-            
-            <div class="file-header">PowerShell Command</div>
-            <div class="code-block">
-<span class="powershell-comment"># PowerShell infinite loop to generate traffic</span><br>
-<span class="powershell-cmd">while</span> (<span class="yaml-string">$true</span>) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="powershell-cmd">Invoke-RestMethod</span> -Uri <span class="yaml-string">"https://localhost:7216/health"</span> -SkipCertificateCheck<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="powershell-cmd">Start-Sleep</span> -Seconds 1<br>
-}
-            </div>
-            <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Command</button>
-            
-            <div class="powershell-loop">
-                <p><strong>Alternative (if Invoke-RestMethod fails):</strong></p>
-                <div class="file-header">PowerShell Alternative</div>
-                <div class="code-block">
-<span class="powershell-cmd">for</span> (<span class="yaml-string">;;</span>) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="powershell-cmd">curl.exe</span> -k https://localhost:7216/health<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<span class="powershell-cmd">Start-Sleep</span> 1<br>
-}
+        <div class="content">
+            <!-- INDEX SECTION -->
+            <section id="index" class="section">
+                <div class="card index-card">
+                    <h2>📑 Table of Contents</h2>
+                    <p style="margin-bottom: 2rem;">Navigate through this comprehensive guide for setting up enterprise-grade monitoring for your .NET API.</p>
+                    
+                    <div class="index-grid">
+                        <a href="#prerequisites" class="index-item">
+                            <h3>1️⃣ Prerequisites</h3>
+                            <p>Required tools and configurations before starting</p>
+                        </a>
+                        
+                        <a href="#hosts-file" class="index-item">
+                            <h3>2️⃣ Hosts File Configuration</h3>
+                            <p>Configure prometheus.local and grafana.local</p>
+                        </a>
+                        
+                        <a href="#architecture" class="index-item">
+                            <h3>3️⃣ Architecture Overview</h3>
+                            <p>Understand the complete monitoring stack architecture</p>
+                        </a>
+                        
+                        <a href="#setup" class="index-item">
+                            <h3>4️⃣ Kubernetes Deployment</h3>
+                            <p>Step-by-step deployment using kubectl</p>
+                        </a>
+                        
+                        <a href="#verification" class="index-item">
+                            <h3>5️⃣ Verification</h3>
+                            <p>Verify Prometheus is scraping metrics correctly</p>
+                        </a>
+                        
+                        <a href="#grafana-setup" class="index-item">
+                            <h3>6️⃣ Grafana Configuration</h3>
+                            <p>Access Grafana and configure data sources</p>
+                        </a>
+                        
+                        <a href="#dashboards" class="index-item">
+                            <h3>7️⃣ Dashboard Creation</h3>
+                            <p>Build custom and import pre-built dashboards</p>
+                        </a>
+                        
+                        <a href="#testing" class="index-item">
+                            <h3>8️⃣ Load Testing</h3>
+                            <p>Generate traffic and monitor metrics</p>
+                        </a>
+                        
+                        <a href="#troubleshooting" class="index-item">
+                            <h3>9️⃣ Troubleshooting</h3>
+                            <p>Common issues and solutions</p>
+                        </a>
+                    </div>
+
+                    <div class="info">
+                        <strong>📂 GitHub Repository:</strong><br>
+                        All configuration files are available at:<br>
+                        <a href="https://github.com/karthikeyan-1234/IntegratedAPI/tree/master/Prometheus-Grafana" target="_blank">
+                            https://github.com/karthikeyan-1234/IntegratedAPI/tree/master/Prometheus-Grafana
+                        </a>
+                    </div>
                 </div>
-                <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Alternative</button>
-            </div>
+            </section>
             
-            <div class="note">
-                This continuously calls your API to generate metrics data. Keep this running while monitoring.
-                Press <strong>Ctrl+C</strong> to stop the loop.
-            </div>
-        </div>
-        
-        <div class="card step-card">
-            <h2><span class="step-number">9</span> Watch Metrics</h2>
-            <p>Go back to your Grafana dashboard. You should see graphs updating every 15 seconds.</p>
-            
-            <div class="success">
-                <strong>🎉 Congratulations!</strong> You now have live monitoring of your .NET API.
-            </div>
-            
-            <div class="checklist">
-                <li>✅ Prometheus scraping .NET API metrics</li>
-                <li>✅ Grafana connected to Prometheus</li>
-                <li>✅ Dashboard with 3 key metrics</li>
-                <li>✅ Live monitoring of your API</li>
-            </div>
-        </div>
-        
-        <div class="card troubleshooting-card">
-            <h2>🔧 Troubleshooting</h2>
-            
-            <div class="problem">
-                <h3>Problem 1: Prometheus target is DOWN</h3>
-                <p>Test connectivity from the container:</p>
-                <div class="file-header">PowerShell Command</div>
-                <div class="code-block">
-<span class="powershell-cmd">docker</span> exec prometheus curl -k https://host.docker.internal:7216/metrics
+            <!-- PREREQUISITES SECTION -->
+            <section id="prerequisites" class="section">
+                <div class="card prerequisites-card">
+                    <h2>✅ Prerequisites</h2>
+                    <p>Ensure you have the following before starting:</p>
+                    
+                    <h3>Required Software</h3>
+                    <div class="checklist">
+                        <li><strong>Docker Desktop</strong> with Kubernetes enabled</li>
+                        <li><strong>kubectl</strong> command-line tool installed</li>
+                        <li><strong>PowerShell</strong> with Administrator privileges</li>
+                        <li><strong>.NET 10 SDK</strong> installed</li>
+                        <li><strong>Visual Studio 2022</strong> or VS Code</li>
+                    </div>
+                    
+                    <h3>Verify Kubernetes is Running</h3>
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> version --short</div>
+                    
+                    <div class="success">
+                        You should see both client and server versions. If not, enable Kubernetes in Docker Desktop settings.
+                    </div>
+
+                    <h3>Your .NET API Deployment Options</h3>
+                    <p>You can run your .NET API in two ways:</p>
+
+                    <div class="deployment-option">
+                        <h4>Option 1: Running from Visual Studio (Development)</h4>
+                        <p>✅ <strong>Recommended for development and testing</strong></p>
+                        <ul style="margin-top: 0.5rem;">
+                            <li>Run your API directly from Visual Studio</li>
+                            <li>API runs on <code>https://localhost:7216</code></li>
+                            <li>Prometheus scrapes via <code>host.docker.internal:7216</code></li>
+                            <li>Easy debugging and code changes</li>
+                        </ul>
+                    </div>
+
+                    <div class="deployment-option" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <h4>Option 2: Deployed to Kubernetes (Production-like)</h4>
+                        <p>✅ <strong>Recommended for production testing</strong></p>
+                        <ul style="margin-top: 0.5rem;">
+                            <li>Deploy your API as a Kubernetes service</li>
+                            <li>API accessible via service name in cluster</li>
+                            <li>Prometheus scrapes via <code>integratedapi-service.default.svc.cluster.local:7080</code></li>
+                            <li>Tests full Kubernetes networking</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Your .NET API Configuration</h3>
+                    <div class="note">
+                        <strong>Important:</strong> Your .NET API is already configured with Prometheus metrics! Based on your Program.cs, you have:
+                        <ul style="margin-top: 1rem;">
+                            <li><code>app.UseHttpMetrics()</code> - Tracks HTTP request metrics</li>
+                            <li><code>app.MapMetrics("/metrics")</code> - Exposes metrics endpoint</li>
+                            <li><code>app.MapHealthChecks("/health")</code> - Health check endpoint</li>
+                            <li><code>app.MapHealthChecks("/ready")</code> - Readiness endpoint</li>
+                            <li><code>app.MapHealthChecks("/live")</code> - Liveness endpoint</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Project Location</h3>
+                    <div class="info">
+                        <strong>Local Path:</strong> <code>C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\Prometheus-Grafana</code><br><br>
+                        <strong>GitHub Repository:</strong> <a href="https://github.com/karthikeyan-1234/IntegratedAPI/tree/master/Prometheus-Grafana" target="_blank">https://github.com/karthikeyan-1234/IntegratedAPI/tree/master/Prometheus-Grafana</a>
+                    </div>
                 </div>
-                <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Command</button>
-                <p>If this fails, check that your .NET API is running and accessible.</p>
-            </div>
-            
-            <div class="problem">
-                <h3>Problem 2: No data in Grafana</h3>
-                <ul>
-                    <li>Make sure traffic generator is running (Step 8)</li>
-                    <li>Wait 1 minute for data to accumulate</li>
-                    <li>Refresh Grafana dashboard</li>
-                    <li>Verify Prometheus target is UP (Step 5)</li>
-                </ul>
-            </div>
-            
-            <div class="problem">
-                <h3>Problem 3: Can't login to Grafana</h3>
-                <p>Default credentials are: <strong>admin / admin</strong></p>
-                <p>If you've changed the password and forgotten it, you can reset by:</p>
-                <div class="file-header">PowerShell Command</div>
-                <div class="code-block">
-<span class="powershell-cmd">docker</span> exec grafana grafana-cli admin reset-admin-password admin
+            </section>
+
+            <!-- HOSTS FILE SECTION -->
+            <section id="hosts-file" class="section">
+                <div class="card prerequisites-card">
+                    <h2>🌐 Hosts File Configuration</h2>
+                    <p>Configure your Windows hosts file to access Prometheus and Grafana using friendly domain names instead of localhost:port.</p>
+
+                    <h3>Step 1: Open Hosts File as Administrator</h3>
+                    <div class="file-header">
+                        <span>PowerShell (Run as Administrator)</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">notepad</span> C:\Windows\System32\drivers\etc\hosts</div>
+
+                    <h3>Step 2: Add Entries</h3>
+                    <p>Add the following lines to the end of the hosts file:</p>
+
+                    <div class="file-header">
+                        <span>C:\Windows\System32\drivers\etc\hosts</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="yaml-comment"># Prometheus & Grafana for Kubernetes Monitoring</span>
+<span class="yaml-value">127.0.0.1</span> prometheus.local
+<span class="yaml-value">127.0.0.1</span> grafana.local</div>
+
+                    <h3>Step 3: Save and Close</h3>
+                    <ol>
+                        <li>Save the file (Ctrl+S)</li>
+                        <li>Close Notepad</li>
+                        <li>No restart required - changes are immediate</li>
+                    </ol>
+
+                    <h3>Step 4: Verify Hosts File</h3>
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">ping</span> prometheus.local
+<span class="powershell-cmd">ping</span> grafana.local</div>
+
+                    <div class="success">
+                        Both should resolve to <code>127.0.0.1</code> and you'll see "Reply from 127.0.0.1"
+                    </div>
+
+                    <h3>Access URLs After Configuration</h3>
+                    <div class="info">
+                        After deploying to Kubernetes, you'll access:<br><br>
+                        <strong>Prometheus:</strong> <a href="http://prometheus.local:30090" target="_blank">http://prometheus.local:30090</a><br>
+                        <strong>Grafana:</strong> <a href="http://grafana.local:30300" target="_blank">http://grafana.local:30300</a>
+                    </div>
+
+                    <div class="warning">
+                        <strong>Troubleshooting:</strong> If you can't edit the hosts file:
+                        <ul style="margin-top: 0.5rem;">
+                            <li>Make sure you're running PowerShell/Notepad as Administrator</li>
+                            <li>Check if antivirus is blocking hosts file modifications</li>
+                            <li>Verify the file is not read-only (right-click → Properties)</li>
+                        </ul>
+                    </div>
                 </div>
-                <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling)">Copy Command</button>
-            </div>
-        </div>
-    </div>
-    
-    <footer>
-        <p>Guide created for .NET API Monitoring with Prometheus & Grafana</p>
-        <p>Save this HTML file for offline reference</p>
-    </footer>
-    
-    <script>
-        function downloadHTML() {
-            const htmlContent = document.documentElement.outerHTML;
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const downloadLink = document.createElement('a');
-            downloadLink.href = URL.createObjectURL(blob);
-            downloadLink.download = 'prometheus-grafana-monitoring-guide.html';
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-        }
-        
-        function copyToClipboard(element) {
-            const text = element.innerText || element.textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                const originalText = element.nextElementSibling.textContent;
-                element.nextElementSibling.textContent = 'Copied!';
-                setTimeout(() => {
-                    element.nextElementSibling.textContent = originalText;
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-            });
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            // Colorize PowerShell commands
-            const psBlocks = document.querySelectorAll('.code-block');
-            psBlocks.forEach(block => {
-                if (block.textContent.includes('cd ') || block.textContent.includes('mkdir ') || 
-                    block.textContent.includes('docker ') || block.textContent.includes('Invoke-RestMethod') ||
-                    block.textContent.includes('Start-Sleep') || block.textContent.includes('while') ||
-                    block.textContent.includes('for ') || block.textContent.includes('curl.exe')) {
-                    // Already colored by HTML classes
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+            </section>
+            
+            <!-- ARCHITECTURE SECTION -->
+            <section id="architecture" class="section">
+                <div class="card architecture-card">
+                    <h2>🏗️ Architecture Overview</h2>
+                    
+                    <h3>Complete Monitoring Stack</h3>
+                    
+                    <div class="data-flow-container">
+                        <div class="component-box api-component">
+                            📱 Your .NET API<br>
+                            <small>Option 1: localhost:7216 (Visual Studio)</small><br>
+                            <small>Option 2: integratedapi-service.default.svc:7080 (K8s)</small>
+                        </div>
+                        
+                        <div style="text-align: center; font-size: 2rem; color: var(--secondary-color); margin: 0.5rem 0;">⬇️</div>
+                        <div style="text-align: center; font-weight: bold; color: var(--prometheus-orange);">Scrapes /metrics every 15s</div>
+                        
+                        <div class="component-box prometheus-component">
+                            📊 Prometheus Pod<br>
+                            <small>NodePort: 30090 → prometheus.local:30090</small>
+                        </div>
+                        
+                        <div style="text-align: center; font-size: 2rem; color: var(--secondary-color); margin: 0.5rem 0;">⬇️</div>
+                        <div style="text-align: center; font-weight: bold; color: var(--grafana-orange);">Queries via PromQL</div>
+                        
+                        <div class="component-box grafana-component">
+                            📈 Grafana Pod<br>
+                            <small>NodePort: 30300 → grafana.local:30300</small>
+                        </div>
+                        
+                        <div style="text-align: center; font-size: 2rem; color: var(--secondary-color); margin: 0.5rem 0;">⬇️</div>
+                        <div style="text-align: center; font-weight: bold;">Visualizes metrics</div>
+                        
+                        <div class="component-box" style="background: linear-gradient(135deg, #8e44ad, #9b59b6);">
+                            👤 You (Browser)<br>
+                            <small>http://grafana.local:30300</small>
+                        </div>
+                    </div>
+                    
+                    <h3>Kubernetes Resources Deployed</h3>
+                    
+                    <div class="architecture-diagram">
+<pre style="margin: 0; line-height: 1.8;">
+┌─────────────────────────────────────────────────────────────────┐
+│                    Namespace: monitoring                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  📦 Prometheus Deployment                                        │
+│  ├── Pod: prometheus-xxxxxxxxxx-xxxxx                            │
+│  ├── ConfigMap: prometheus-config                                │
+│  │   └── prometheus.yml (scrape configs)                         │
+│  ├── Service: prometheus-service                                 │
+│  │   └── Type: NodePort (30090)                                  │
+│  ├── ServiceAccount: prometheus-service-account                  │
+│  ├── ClusterRole: prometheus-cluster-role                        │
+│  │   └── Permissions: nodes, pods, services, endpoints           │
+│  └── ClusterRoleBinding: prometheus-cluster-role-binding         │
+│                                                                   │
+│  📦 Grafana Deployment                                           │
+│  ├── Pod: grafana-xxxxxxxxxx-xxxxx                               │
+│  ├── ConfigMap: grafana-datasources                              │
+│  │   └── prometheus.yaml (auto-configured)                       │
+│  ├── ConfigMap: grafana-dashboards                               │
+│  │   └── dashboard-provider.yaml                                 │
+│  └── Service: grafana-service                                    │
+│      └── Type: NodePort (30300)                                  │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+</pre>
+                    </div>
+                    
+                    <h3>Data Flow Explanation</h3>
+                    
+                    <ol>
+                        <li><strong>Metrics Generation:</strong> Your .NET API generates Prometheus metrics automatically through the <code>prometheus-net.AspNetCore</code> library</li>
+                        <li><strong>Metrics Exposure:</strong> Metrics are exposed at the <code>/metrics</code> endpoint</li>
+                        <li><strong>Scraping (Visual Studio):</strong> Prometheus scrapes <code>host.docker.internal:7216/metrics</code> every 15 seconds</li>
+                        <li><strong>Scraping (Kubernetes):</strong> Prometheus scrapes <code>integratedapi-service.default.svc.cluster.local:7080/metrics</code></li>
+                        <li><strong>Storage:</strong> Prometheus stores time-series data for 7 days (configurable via <code>--storage.tsdb.retention.time</code>)</li>
+                        <li><strong>Querying:</strong> Grafana queries Prometheus using PromQL via internal service DNS</li>
+                        <li><strong>Visualization:</strong> Grafana displays metrics in dashboards accessible at <code>http://grafana.local:30300</code></li>
+                    </ol>
+                    
+                    <h3>Why This Configuration?</h3>
+                    
+                    <div class="note">
+                        <strong>Kubernetes vs Docker Compose:</strong> This guide uses Kubernetes because:
+                        <ul style="margin-top: 1rem;">
+                            <li>✅ Production-grade deployment practices</li>
+                            <li>✅ RBAC (Role-Based Access Control) security</li>
+                            <li>✅ ConfigMap-based configuration management</li>
+                            <li>✅ Health checks and automatic restarts</li>
+                            <li>✅ Service discovery within cluster</li>
+                            <li>✅ Easy scaling capabilities</li>
+                            <li>✅ Declarative configuration with kubectl</li>
+                        </ul>
+                    </div>
+
+                    <h3>NodePort vs ClusterIP</h3>
+                    <div class="info">
+                        <strong>NodePort Services:</strong> Prometheus and Grafana use NodePort to expose services externally
+                        <ul style="margin-top: 0.5rem;">
+                            <li>Prometheus: Port 30090 (mapped from internal 9090)</li>
+                            <li>Grafana: Port 30300 (mapped from internal 3000)</li>
+                        </ul>
+                        <br>
+                        <strong>ClusterIP Service:</strong> Your API (if deployed to K8s) uses ClusterIP for internal cluster communication
+                    </div>
+                </div>
+            </section>
+            
+            <!-- SETUP SECTION -->
+            <section id="setup" class="section">
+                <div class="card step-card">
+                    <h2><span class="step-number">1</span> Kubernetes Deployment with kubectl</h2>
+                    
+                    <h3>Step 1: Navigate to Your Project</h3>
+                    <div class="file-header">
+                        <span>PowerShell (Administrator)</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">cd</span> C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\Prometheus-Grafana</div>
+                    
+                    <div class="note">
+                        <strong>Alternatively, clone from GitHub:</strong>
+                        <div class="file-header" style="margin-top: 0.5rem;">
+                            <span>PowerShell</span>
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        </div>
+                        <div class="code-block"><span class="powershell-cmd">git clone</span> https://github.com/karthikeyan-1234/IntegratedAPI.git
+<span class="powershell-cmd">cd</span> IntegratedAPI\Prometheus-Grafana</div>
+                    </div>
+
+                    <h3>Step 2: Create the Monitoring Namespace</h3>
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> create namespace monitoring</div>
+                    
+                    <div class="success">
+                        Expected output: <code>namespace/monitoring created</code>
+                    </div>
+                    
+                    <h3>Step 3: Deploy Prometheus Configuration</h3>
+                    <p>Apply the Prometheus configuration ConfigMap:</p>
+                    
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> apply -f prometheus-config.yml</div>
+                    
+                    <div class="success">
+                        Expected output: <code>configmap/prometheus-config created</code>
+                    </div>
+
+                    <div class="warning">
+                        <strong>Configuration Details:</strong> The prometheus-config.yml contains scrape targets for:
+                        <ul style="margin-top: 0.5rem;">
+                            <li><strong>integrated-api:</strong> Your .NET API (both localhost and K8s service options)</li>
+                            <li><strong>prometheus:</strong> Prometheus itself for internal metrics</li>
+                            <li><strong>kubernetes-apiservers:</strong> K8s API server metrics</li>
+                            <li><strong>kubernetes-nodes:</strong> K8s node metrics</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Step 4: Deploy Prometheus with RBAC</h3>
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> apply -f prometheus-deploy.yml</div>
+                    
+                    <div class="success">
+                        Expected output (6 resources created):
+                        <ul style="margin-top: 0.5rem;">
+                            <li><code>namespace/monitoring created</code> (or already exists)</li>
+                            <li><code>deployment.apps/prometheus created</code></li>
+                            <li><code>serviceaccount/prometheus-service-account created</code></li>
+                            <li><code>clusterrole.rbac.authorization.k8s.io/prometheus-cluster-role created</code></li>
+                            <li><code>clusterrolebinding.rbac.authorization.k8s.io/prometheus-cluster-role-binding created</code></li>
+                            <li><code>service/prometheus-service created</code></li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Step 5: Deploy Grafana</h3>
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> apply -f grafana-deploy.yml</div>
+                    
+                    <div class="success">
+                        Expected output (4 resources created):
+                        <ul style="margin-top: 0.5rem;">
+                            <li><code>deployment.apps/grafana created</code></li>
+                            <li><code>configmap/grafana-datasources created</code></li>
+                            <li><code>configmap/grafana-dashboards created</code></li>
+                            <li><code>service/grafana-service created</code></li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Step 6: Verify All Deployments</h3>
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> get all -n monitoring</div>
+                    
+                    <div class="info">
+                        <strong>What to expect:</strong>
+                        <ul style="margin-top: 0.5rem;">
+                            <li>✅ 2 pods (prometheus-xxx and grafana-xxx) in <strong>Running</strong> state</li>
+                            <li>✅ 2 services (prometheus-service and grafana-service) with NodePort type</li>
+                            <li>✅ 2 deployments (prometheus and grafana) with 1/1 ready</li>
+                            <li>✅ 2 replicasets (one for each deployment)</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Step 7: Watch Pods Until Ready</h3>
+                    <p>Monitor the pods until they're fully running:</p>
+                    
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> get pods -n monitoring -w</div>
+                    
+                    <div class="note">
+                        Press <strong>Ctrl+C</strong> to stop watching. Wait until both pods show <code>1/1</code> in the READY column and <code>Running</code> status.
+                    </div>
+                    
+                    <h3>Step 8: Verify Services and NodePorts</h3>
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> get svc -n monitoring</div>
+                    
+                    <div class="success">
+                        You should see:
+                        <ul style="margin-top: 0.5rem;">
+                            <li><strong>prometheus-service</strong> - Type: NodePort, Port: 9090:30090/TCP</li>
+                            <li><strong>grafana-service</strong> - Type: NodePort, Port: 3000:30300/TCP</li>
+                        </ul>
+                    </div>
+
+                    <h3>Step 9: View Detailed Pod Information</h3>
+                    <div class="file-header">
+                        <span>PowerShell Commands</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-comment"># View Prometheus pod details</span>
+<span class="powershell-cmd">kubectl</span> describe pod -n monitoring -l app=prometheus
+
+<span class="powershell-comment"># View Grafana pod details</span>
+<span class="powershell-cmd">kubectl</span> describe pod -n monitoring -l app=grafana</div>
+
+                    <h3>Step 10: Check ConfigMaps</h3>
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> get configmaps -n monitoring</div>
+
+                    <div class="success">
+                        ✅ <strong>Deployment Complete!</strong> Your monitoring stack is now running in Kubernetes.
+                    </div>
+                </div>
+            </section>
+            
+            <!-- VERIFICATION SECTION -->
+            <section id="verification" class="section">
+                <div class="card step-card">
+                    <h2><span class="step-number">2</span> Verify Prometheus is Scraping Metrics</h2>
+                    
+                    <h3>Step 1: Access Prometheus Web UI</h3>
+                    <p>Open your browser and navigate to:</p>
+                    <div class="info">
+                        <strong>URL:</strong> <a href="http://prometheus.local:30090" target="_blank">http://prometheus.local:30090</a>
+                    </div>
+                    
+                    <div class="note">
+                        <strong>Alternative URLs:</strong>
+                        <ul style="margin-top: 0.5rem;">
+                            <li><a href="http://localhost:30090" target="_blank">http://localhost:30090</a></li>
+                            <li><a href="http://127.0.0.1:30090" target="_blank">http://127.0.0.1:30090</a></li>
+                        </ul>
+                    </div>
+
+                    <h3>Step 2: Check Scrape Targets</h3>
+                    <ol>
+                        <li>In Prometheus UI, click on <strong>Status</strong> in the top menu</li>
+                        <li>Select <strong>Targets</strong> from the dropdown</li>
+                        <li>Look for the following targets and their status:</li>
+                    </ol>
+
+                    <div class="info">
+                        <strong>Expected Targets:</strong>
+                        <ul style="margin-top: 0.5rem;">
+                            <li><strong>integrated-api (1/1 up)</strong> - <span style="color: var(--success-color);">●</span> UP (green)</li>
+                            <li><strong>prometheus (1/1 up)</strong> - <span style="color: var(--success-color);">●</span> UP (green)</li>
+                            <li><strong>kubernetes-apiservers</strong> - <span style="color: var(--success-color);">●</span> UP (green)</li>
+                            <li><strong>kubernetes-nodes</strong> - <span style="color: var(--success-color);">●</span> UP (green)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="warning">
+                        <strong>If "integrated-api" target is DOWN:</strong>
+                        <ul style="margin-top: 0.5rem;">
+                            <li><strong>Option 1 (Visual Studio):</strong> Make sure your .NET API is running on <code>https://localhost:7216</code></li>
+                            <li><strong>Option 2 (Kubernetes):</strong> Make sure your API is deployed with service name <code>integratedapi-service</code> in default namespace</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Step 3: Query Metrics</h3>
+                    <p>Test that Prometheus is collecting metrics from your API:</p>
+                    <ol>
+                        <li>Go back to the Prometheus home page (click "Prometheus" logo)</li>
+                        <li>In the query box, enter:</li>
+                    </ol>
+
+                    <div class="file-header">
+                        <span>PromQL Query</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block">http_requests_received_total</div>
+
+                    <ol start="3">
+                        <li>Click <strong>Execute</strong></li>
+                        <li>Switch to the <strong>Graph</strong> tab to see visual representation</li>
+                        <li>You should see metrics data (even if values are zero initially)</li>
+                    </ol>
+                    
+                    <div class="note">
+                        <strong>Available .NET Metrics to Test:</strong>
+                        <ul style="margin-top: 0.5rem;">
+                            <li><code>http_requests_received_total</code> - Total HTTP requests</li>
+                            <li><code>http_request_duration_seconds</code> - Request duration histogram</li>
+                            <li><code>http_requests_in_progress</code> - Active requests</li>
+                            <li><code>process_private_memory_bytes</code> - Process memory usage</li>
+                            <li><code>process_cpu_seconds_total</code> - CPU time used</li>
+                            <li><code>dotnet_total_memory_bytes</code> - .NET memory metrics</li>
+                            <li><code>up</code> - Shows all targets (1 = up, 0 = down)</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Step 4: Test Connectivity from Prometheus Pod</h3>
+                    <p>If the target shows DOWN, test connectivity from inside the Prometheus pod:</p>
+
+                    <h4>For Visual Studio Deployment:</h4>
+                    <div class="file-header">
+                        <span>PowerShell Commands</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-comment"># Get Prometheus pod name</span>
+<span class="powershell-cmd">$podName</span> = kubectl get pods -n monitoring -l app=prometheus -o jsonpath="{.items[0].metadata.name}"
+
+<span class="powershell-comment"># Test connection to localhost API</span>
+<span class="powershell-cmd">kubectl</span> exec -n monitoring $podName -- wget -O- --no-check-certificate https://host.docker.internal:7216/metrics</div>
+
+                    <h4>For Kubernetes Deployment:</h4>
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> exec -n monitoring $podName -- wget -O- http://integratedapi-service.default.svc.cluster.local:7080/metrics</div>
+                    
+                    <div class="success">
+                        If successful, you'll see Prometheus metrics output (text format with # comments and metric lines).
+                    </div>
+
+                    <h3>Step 5: Verify Scrape Configuration</h3>
+                    <div class="file-header">
+                        <span>PowerShell Command</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block"><span class="powershell-cmd">kubectl</span> get configmap prometheus-config -n monitoring -o yaml</div>
+
+                    <p>This shows your current Prometheus scrape configuration.</p>
+                </div>
+            </section>
+            
+            <!-- GRAFANA SETUP SECTION -->
+            <section id="grafana-setup" class="section">
+                <div class="card step-card">
+                    <h2><span class="step-number">3</span> Grafana Configuration</h2>
+                    
+                    <h3>Step 1: Access Grafana</h3>
+                    <p>Open your browser and navigate to:</p>
+                    <div class="info">
+                        <strong>URL:</strong> <a href="http://grafana.local:30300" target="_blank">http://grafana.local:30300</a><br><br>
+                        <strong>Default Credentials:</strong><br>
+                        Username: <code>admin</code><br>
+                        Password: <code>admin123</code>
+                    </div>
+                    
+                    <div class="note">
+                        <strong>Alternative URLs:</strong>
+                        <ul style="margin-top: 0.5rem;">
+                            <li><a href="http://localhost:30300" target="_blank">http://localhost:30300</a></li>
+                            <li><a href="http://127.0.0.1:30300" target="_blank">http://127.0.0.1:30300</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="warning">
+                        Grafana may ask you to change the password on first login. You can:
+                        <ul style="margin-top: 0.5rem;">
+                            <li>Change it to a new password</li>
+                            <li>Click "Skip" to keep using admin123</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Step 2: Verify Pre-Configured Data Source</h3>
+                    <p>The Prometheus data source is already configured via ConfigMap! To verify:</p>
+                    <ol>
+                        <li>Click the <strong>⚙️ Configuration</strong> (gear icon) in the left sidebar</li>
+                        <li>Select <strong>Data Sources</strong></li>
+                        <li>You should see <strong>Prometheus</strong> listed with a green checkmark</li>
+                        <li>Click on it to view the configuration:
+                            <ul style="margin-top: 0.5rem;">
+                                <li><strong>Name:</strong> Prometheus</li>
+                                <li><strong>Type:</strong> Prometheus</li>
+                                <li><strong>URL:</strong> <code>http://prometheus-service.monitoring.svc.cluster.local:9090</code></li>
+                                <li><strong>Access:</strong> Server (default/proxy)</li>
+                                <li><strong>Scrape interval:</strong> 5s</li>
+                                <li><strong>Query timeout:</strong> 60s</li>
+                            </ul>
+                        </li>
+                        <li>Scroll down and click <strong>Save & Test</strong></li>
+                    </ol>
+                    
+                    <div class="success">
+                        You should see a green notification: <strong>"Data source is working"</strong>
+                    </div>
+                    
+                    <h3>Understanding the Auto-Configuration</h3>
+                    <div class="note">
+                        The data source is automatically provisioned through the <code>grafana-datasources</code> ConfigMap defined in <strong>grafana-deploy.yml</strong>:
+                        <ul style="margin-top: 1rem;">
+                            <li>✅ Uses Kubernetes internal DNS for service discovery</li>
+                            <li>✅ No manual configuration needed</li>
+                            <li>✅ Automatically set as default data source</li>
+                            <li>✅ Configured for optimal performance (5s interval, 60s timeout)</li>
+                        </ul>
+                    </div>
+
+                    <h3>Step 3: Explore Prometheus Data</h3>
+                    <ol>
+                        <li>Click <strong>Explore</strong> (compass icon) in the left sidebar</li>
+                        <li>Ensure <strong>Prometheus</strong> is selected as the data source (top dropdown)</li>
+                        <li>In the <strong>Metrics browser</strong>, start typing: <code>http_</code></li>
+                        <li>You should see auto-complete suggestions with all available HTTP metrics</li>
+                        <li>Select <code>http_requests_received_total</code> and click <strong>Run query</strong></li>
+                    </ol>
+
+                    <div class="success">
+                        You should see metric data and a graph. This confirms Grafana can query Prometheus successfully!
+                    </div>
+                </div>
+            </section>
+            
+            <!-- DASHBOARDS SECTION -->
+            <section id="dashboards" class="section">
+                <div class="card dashboard-card">
+                    <h2><span class="step-number">4</span> Dashboard Creation & Import</h2>
+                    
+                    <h3>Option 1: Import .NET Runtime Dashboard (⭐ Recommended)</h3>
+                    <p>The fastest way to get professional monitoring is to import a pre-built dashboard designed for .NET applications.</p>
+                    
+                    <div class="info">
+                        <strong>📊 .NET Runtime Dashboard</strong><br>
+                        <strong>Dashboard ID:</strong> <code>19924</code><br>
+                        <strong>Name:</strong> .NET Runtime<br>
+                        <strong>Description:</strong> Comprehensive dashboard for .NET 8+ applications with runtime metrics, GC stats, thread pool, HTTP metrics, and more<br>
+                        <strong>Author:</strong> Grafana Labs<br>
+                        <strong>Link:</strong> <a href="https://grafana.com/grafana/dashboards/19924" target="_blank">https://grafana.com/grafana/dashboards/19924</a>
+                    </div>
+                    
+                    <h4>Import Steps:</h4>
+                    <ol>
+                        <li>In Grafana, click the <strong>+</strong> (plus) icon in the left sidebar</li>
+                        <li>Select <strong>Import dashboard</strong></li>
+                        <li>In the "Import via grafana.com" field, enter: <code>19924</code></li>
+                        <li>Click <strong>Load</strong></li>
+                        <li>On the import page:
+                            <ul style="margin-top: 0.5rem;">
+                                <li>Name: Keep default or change to ".NET API Runtime Metrics"</li>
+                                <li>Folder: Select "General" or create a new folder</li>
+                                <li>Prometheus: Select <strong>Prometheus</strong> from the dropdown</li>
+                            </ul>
+                        </li>
+                        <li>Click <strong>Import</strong></li>
+                    </ol>
+                    
+                    <div class="success">
+                        🎉 <strong>Congratulations!</strong> You now have a professional .NET monitoring dashboard featuring:
+                        <ul style="margin-top: 0.5rem;">
+                            <li>✅ HTTP Request Rate & Duration</li>
+                            <li>✅ Memory Usage (Heap, GC, Total)</li>
+                            <li>✅ CPU Utilization</li>
+                            <li>✅ Thread Pool Metrics (Active, Available, Queue Length)</li>
+                            <li>✅ GC Collection Counts (Gen 0, 1, 2)</li>
+                            <li>✅ Exception Rates</li>
+                            <li>✅ Assembly Load Counts</li>
+                            <li>✅ Connection Pool Statistics</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>Option 2: Create Custom Dashboard</h3>
+                    <p>Build your own dashboard with specific metrics tailored to your API:</p>
+                    
+                    <h4>Creating a New Dashboard</h4>
+                    <ol>
+                        <li>Click the <strong>+</strong> icon in the left sidebar</li>
+                        <li>Select <strong>Create Dashboard</strong></li>
+                        <li>Click <strong>Add visualization</strong></li>
+                        <li>Select <strong>Prometheus</strong> as the data source</li>
+                    </ol>
+                    
+                    <h4>Panel 1: HTTP Request Rate</h4>
+                    <div class="file-header">
+                        <span>PromQL Query</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block">rate(http_requests_received_total[1m])</div>
+                    
+                    <p><strong>Panel Configuration:</strong></p>
+                    <ul>
+                        <li>Title: <code>HTTP Request Rate</code></li>
+                        <li>Description: <code>Requests per second</code></li>
+                        <li>Unit: <code>reqps</code> (requests per second)</li>
+                        <li>Visualization: <strong>Time series</strong></li>
+                        <li>Legend: <strong>Show</strong> - displays labels</li>
+                        <li>Click <strong>Apply</strong> to save</li>
+                    </ul>
+                    
+                    <h4>Panel 2: Request Duration (95th Percentile)</h4>
+                    <div class="file-header">
+                        <span>PromQL Query</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block">histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) * 1000</div>
+                    
+                    <p><strong>Panel Configuration:</strong></p>
+                    <ul>
+                        <li>Title: <code>Request Duration (P95)</code></li>
+                        <li>Unit: <code>ms</code> (milliseconds)</li>
+                        <li>Visualization: <strong>Time series</strong> or <strong>Gauge</strong></li>
+                        <li>Thresholds:
+                            <ul style="margin-top: 0.3rem;">
+                                <li>Green: 0-200ms</li>
+                                <li>Yellow: 200-500ms</li>
+                                <li>Red: >500ms</li>
+                            </ul>
+                        </li>
+                        <li>Click <strong>Apply</strong></li>
+                    </ul>
+                    
+                    <h4>Panel 3: Memory Usage</h4>
+                    <div class="file-header">
+                        <span>PromQL Query</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block">process_private_memory_bytes / 1024 / 1024</div>
+                    
+                    <p><strong>Panel Configuration:</strong></p>
+                    <ul>
+                        <li>Title: <code>Process Memory Usage</code></li>
+                        <li>Unit: <code>MiB</code> (Mebibytes)</li>
+                        <li>Visualization: <strong>Time series</strong></li>
+                        <li>Fill opacity: 20%</li>
+                        <li>Click <strong>Apply</strong></li>
+                    </ul>
+                    
+                    <h4>Panel 4: CPU Usage</h4>
+                    <div class="file-header">
+                        <span>PromQL Query</span>
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <div class="code-block">rate(process_cpu_seconds_total[1m]) * 100</div>
+                    
+                    <p><strong>Panel Configuration:</strong></p>
+                    <ul>
+                        <li>Title: <code>CPU Usage</code></li>
+                        <li>Unit: <code>percent (0-100)</code></li>
+                        <li>Visualization: <strong>Gauge</strong> or <strong>Time series</strong></li>
+                        <li>Max value: 100</li>
+                        <li>Click <strong>Apply</strong></li>
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    Namespace: default (Optional)                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  📦 Your .NET API Deployment (if running in K8s)                 │
+│  ├── Pod: integratedapi-xxxxxxxxxx-xxxxx                         │
+│  └── Service: integratedapi-service                              │
+│      └── Type: ClusterIP (7080)                                  │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘

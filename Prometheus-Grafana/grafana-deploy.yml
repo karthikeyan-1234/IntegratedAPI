@@ -77,12 +77,13 @@ data:
     datasources:
     - name: Prometheus
       type: prometheus
-      url: http://prometheus-service.monitoring.svc.cluster.local:9090
+      url: http://prometheus.local
       access: proxy
       isDefault: true
       jsonData:
         timeInterval: 5s
         queryTimeout: 60s
+      editable: true
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -119,3 +120,27 @@ spec:
       port: 3000
       targetPort: 3000
       nodePort: 30300
+
+---
+
+# ----------------------------------------------------------------------------
+# Grafana Ingress (nginx)
+# ----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: grafana.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana-service
+                port:
+                  number: 3000
