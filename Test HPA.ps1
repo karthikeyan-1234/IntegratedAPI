@@ -7,9 +7,9 @@ Write-Host "This will generate sustained load to trigger HPA scaling" -Foregroun
 Write-Host "Watch your HPA monitor window to see scaling in action!`n" -ForegroundColor Yellow
 
 # Configuration - UPDATE THIS TO YOUR ACTUAL API ENDPOINT
-$apiUrl = "http://kong-proxy.local/api/Cart/GetCartItemsAsync"  # Use your actual working endpoint
+$apiUrl = "http://kong-proxy.local/WeatherForecast"  # Use your actual working endpoint
 $duration = 300  # 5 minutes (300 seconds) - adjust as needed
-$requestsPerSecond = 20  # Increase this to generate more CPU load
+$requestsPerSecond = 800  # Increase this to generate more CPU load
 $delayBetweenRequests = [math]::Floor(1000 / $requestsPerSecond)  # milliseconds
 
 $endTime = (Get-Date).AddSeconds($duration)
