@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide 1: Kong HTTPS Setup with cert-manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Professional CSS Reset and Base Styles */
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #1abc9c;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --info: #3498db;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --border-radius: 8px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.7;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Styles */
+        .guide-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 40px;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .guide-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            opacity: 0.3;
+        }
+
+        .guide-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .guide-header .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            max-width: 800px;
+            position: relative;
+        }
+
+        /* Table of Contents */
+        .toc-container {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: var(--shadow);
+            border-left: 5px solid var(--accent);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            color: var(--primary);
+        }
+
+        .toc-header i {
+            font-size: 1.8rem;
+            color: var(--accent);
+        }
+
+        .toc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .toc-section {
+            background: var(--light);
+            padding: 20px;
+            border-radius: calc(var(--border-radius) - 2px);
+            transition: var(--transition);
+            border: 2px solid transparent;
+        }
+
+        .toc-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            border-color: var(--accent);
+        }
+
+        .toc-section h3 {
+            color: var(--secondary);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toc-section ul {
+            list-style: none;
+        }
+
+        .toc-section li {
+            margin-bottom: 12px;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .toc-section li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .toc-section a {
+            color: var(--dark);
+            text-decoration: none;
+            transition: var(--transition);
+            display: block;
+            padding: 5px 0;
+        }
+
+        .toc-section a:hover {
+            color: var(--accent);
+            padding-left: 5px;
+        }
+
+        /* Main Content Sections */
+        .content-section {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .content-section:hover {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .step-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--accent), var(--secondary));
+            color: white;
+            border-radius: 50%;
+            font-size: 1.4rem;
+            font-weight: bold;
+            flex-shrink: 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .section-header h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .section-subheader {
+            color: var(--secondary);
+            font-size: 1.3rem;
+            margin: 25px 0 15px 0;
+            padding-left: 15px;
+            border-left: 4px solid var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Alert Boxes */
+        .alert-box {
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin: 20px 0;
+            border-left: 5px solid;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .alert-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: inherit;
+            opacity: 0.3;
+        }
+
+        .alert-box h3, .alert-box h4 {
+            color: inherit;
+            margin-top: 0;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .note {
+            background: linear-gradient(135deg, #e8f4fd, #d4e9fa);
+            border-left-color: var(--info);
+            color: #2c5282;
+        }
+
+        .warning {
+            background: linear-gradient(135deg, #fef9e7, #fcf3cf);
+            border-left-color: var(--warning);
+            color: #7d6608;
+        }
+
+        .success {
+            background: linear-gradient(135deg, #e8f8ef, #d5f4e6);
+            border-left-color: var(--success);
+            color: #1e8449;
+        }
+
+        .critical {
+            background: linear-gradient(135deg, #fdedec, #fadbd8);
+            border-left-color: var(--danger);
+            color: #922b21;
+        }
+
+        .architecture {
+            background: linear-gradient(135deg, #e8f6f3, #d1f2eb);
+            border-left-color: var(--accent);
+            color: #0e6251;
+        }
+
+        /* Code Blocks */
+        .code-block-container {
+            background: #1a1a1a;
+            border-radius: var(--border-radius);
+            margin: 20px 0;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .code-header {
+            background: #2d2d2d;
+            color: #ccc;
+            padding: 12px 20px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #404040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .code-block {
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .code-block code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #f8f8f2;
+            white-space: pre;
+        }
+
+        .code-block .comment { color: #6272a4; }
+        .code-block .string { color: #f1fa8c; }
+        .code-block .keyword { color: #ff79c6; }
+        .code-block .function { color: #50fa7b; }
+        .code-block .number { color: #bd93f9; }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            margin: 25px 0;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        thead {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        th {
+            color: white;
+            padding: 18px 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        td {
+            padding: 15px 20px;
+            border-top: 1px solid var(--light);
+            border-bottom: 1px solid var(--light);
+        }
+
+        tbody tr {
+            transition: var(--transition);
+        }
+
+        tbody tr:hover {
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        /* Navigation */
+        .guide-navigation {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 15px;
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .nav-button {
+            display: block;
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: calc(var(--border-radius) - 2px);
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .nav-button:hover {
+            background: var(--secondary);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Back to Top */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--accent);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-shadow: 0 6px 15px rgba(26, 188, 156, 0.4);
+            transition: var(--transition);
+            opacity: 0;
+            visibility: hidden;
+            z-index: 999;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            background: var(--secondary);
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .guide-header {
+                padding: 25px 20px;
+            }
+            
+            .guide-header h1 {
+                font-size: 2rem;
+            }
+            
+            .toc-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .content-section {
+                padding: 20px;
+            }
+            
+            .guide-navigation {
+                position: static;
+                margin: 20px 0;
+                width: 100%;
+            }
+            
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .step-number {
+                width: 45px;
+                height: 45px;
+                font-size: 1.2rem;
+            }
+        }
+
+        /* Utility Classes */
+        .code-inline {
+            background: #f1f5f9;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            color: var(--danger);
+            border: 1px solid #ddd;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #a5d6a7 0%, #a5d6a7 100%);
+            background-repeat: no-repeat;
+            background-size: 100% 0.4em;
+            background-position: 0 90%;
+            padding: 0.1rem 0.3rem;
+        }
+
+        /* Section Dividers */
+        .section-divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            margin: 40px 0;
+            opacity: 0.5;
+        }
+
+        /* Icon Styling */
+        .icon {
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Sidebar -->
+    <div class="guide-navigation">
+        <a href="#toc" class="nav-button">
+            <i class="fas fa-list"></i> Table of Contents
+        </a>
+        <a href="#overview" class="nav-button">
+            <i class="fas fa-home"></i> Overview
+        </a>
+        <a href="#summary" class="nav-button">
+            <i class="fas fa-check-circle"></i> Summary
+        </a>
+        <button onclick="window.print()" class="nav-button">
+            <i class="fas fa-print"></i> Print Guide
+        </button>
+    </div>
+
+    <!-- Back to Top Button -->
+    <a href="#" class="back-to-top" id="backToTop">
+        <i class="fas fa-arrow-up"></i>
+    </a>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="guide-header">
+            <h1><i class="fas fa-lock"></i> Guide 1: Kong HTTPS Setup with cert-manager</h1>
+            <p class="subtitle">Complete guide to configure Kong Gateway with HTTPS using cert-manager and self-signed certificates for local development on Docker Desktop Kubernetes.</p>
+        </header>
+
+        <!-- Table of Contents -->
+        <div class="toc-container" id="toc">
+            <div class="toc-header">
+                <i class="fas fa-bookmark"></i>
+                <h2>Table of Contents</h2>
+            </div>
+            <div class="toc-grid">
+                <div class="toc-section">
+                    <h3><i class="fas fa-cogs"></i> Setup & Installation</h3>
+                    <ul>
+                        <li><a href="#overview"><i class="fas fa-eye"></i> Architecture Overview</a></li>
+                        <li><a href="#install-cert-manager"><i class="fas fa-download"></i> Install cert-manager</a></li>
+                        <li><a href="#create-ca"><i class="fas fa-certificate"></i> Create Certificate Authority</a></li>
+                        <li><a href="#generate-certs"><i class="fas fa-key"></i> Generate Kong Certificates</a></li>
+                    </ul>
+                </div>
+                <div class="toc-section">
+                    <h3><i class="fas fa-server"></i> Configuration</h3>
+                    <ul>
+                        <li><a href="#configure-ingress"><i class="fas fa-network-wired"></i> Configure Ingress</a></li>
+                        <li><a href="#local-dns"><i class="fas fa-globe"></i> Local DNS Setup</a></li>
+                        <li><a href="#trust-ca"><i class="fas fa-shield-alt"></i> Trust Root CA</a></li>
+                    </ul>
+                </div>
+                <div class="toc-section">
+                    <h3><i class="fas fa-check-circle"></i> Verification & Summary</h3>
+                    <ul>
+                        <li><a href="#verify"><i class="fas fa-vial"></i> Verify HTTPS Setup</a></li>
+                        <li><a href="#summary"><i class="fas fa-clipboard-check"></i> Configuration Summary</a></li>
+                        <li><a href="#notes"><i class="fas fa-exclamation-triangle"></i> Important Notes</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overview Section -->
+        <div class="content-section" id="overview">
+            <div class="section-header">
+                <div class="step-number">1</div>
+                <h2>Architecture Overview</h2>
+            </div>
+            
+            <div class="architecture alert-box">
+                <h3><i class="fas fa-sitemap"></i> System Components</h3>
+                <ul>
+                    <li><strong>Kong Gateway:</strong> Admin (8444), Proxy (8443), Manager (8445)</li>
+                    <li><strong>cert-manager:</strong> Automated certificate lifecycle management</li>
+                    <li><strong>Self-signed CA:</strong> Local development certificate authority</li>
+                    <li><strong>NGINX Ingress:</strong> TLS termination and routing</li>
+                </ul>
+            </div>
+
+            <div class="note alert-box">
+                <strong><i class="fas fa-bullseye"></i> Objective:</strong> Configure Kong Gateway with HTTPS using cert-manager and self-signed certificates for local development on Docker Desktop Kubernetes.
+            </div>
+        </div>
+
+        <!-- Install cert-manager Section -->
+        <div class="content-section" id="install-cert-manager">
+            <div class="section-header">
+                <div class="step-number">2</div>
+                <h2>Install cert-manager</h2>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Terminal Command</span>
+                    <span>PowerShell / Bash</span>
+                </div>
+                <div class="code-block">
+<code># Install cert-manager v1.12.0
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.12.0/cert-manager.yaml
+
+# Verify installation (wait for all pods to be Running)
+kubectl get pods -n cert-manager
+
+# Expected output: cert-manager, cert-manager-cainjector, cert-manager-webhook</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Certificate Authority Section -->
+        <div class="content-section" id="create-ca">
+            <div class="section-header">
+                <div class="step-number">3</div>
+                <h2>Create Certificate Authority</h2>
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-file-code"></i> 3.1 Self-Signed ClusterIssuer</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-file-alt"></i> selfsigned-cluster-issuer.yaml</span>
+                    <span>Kubernetes Manifest</span>
+                </div>
+                <div class="code-block">
+<code><span class="keyword">apiVersion</span>: cert-manager.io/v1
+<span class="keyword">kind</span>: ClusterIssuer
+<span class="keyword">metadata</span>:
+  <span class="keyword">name</span>: selfsigned-cluster-issuer
+<span class="keyword">spec</span>:
+  <span class="keyword">selfSigned</span>: {}</code>
+                </div>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Apply Configuration</span>
+                    <span>PowerShell / Bash</span>
+                </div>
+                <div class="code-block">
+<code>kubectl apply -f selfsigned-cluster-issuer.yaml</code>
+                </div>
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-certificate"></i> 3.2 Root CA Certificate</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-file-alt"></i> root-ca.yaml</span>
+                    <span>Kubernetes Manifest</span>
+                </div>
+                <div class="code-block">
+<code><span class="keyword">apiVersion</span>: cert-manager.io/v1
+<span class="keyword">kind</span>: Certificate
+<span class="keyword">metadata</span>:
+  <span class="keyword">name</span>: root-ca
+  <span class="keyword">namespace</span>: cert-manager
+<span class="keyword">spec</span>:
+  <span class="keyword">isCA</span>: <span class="keyword">true</span>
+  <span class="keyword">commonName</span>: local-dev-root-ca
+  <span class="keyword">secretName</span>: local-dev-root-ca
+  <span class="keyword">duration</span>: 87600h  <span class="comment"># 10 years</span>
+  <span class="keyword">renewBefore</span>: 720h  <span class="comment"># 30 days</span>
+  <span class="keyword">issuerRef</span>:
+    <span class="keyword">name</span>: selfsigned-cluster-issuer
+    <span class="keyword">kind</span>: ClusterIssuer</code>
+                </div>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Apply Configuration</span>
+                    <span>PowerShell / Bash</span>
+                </div>
+                <div class="code-block">
+<code>kubectl apply -f root-ca.yaml</code>
+                </div>
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-exchange-alt"></i> 3.3 CA ClusterIssuer</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-file-alt"></i> ca-cluster-issuer.yaml</span>
+                    <span>Kubernetes Manifest</span>
+                </div>
+                <div class="code-block">
+<code><span class="keyword">apiVersion</span>: cert-manager.io/v1
+<span class="keyword">kind</span>: ClusterIssuer
+<span class="keyword">metadata</span>:
+  <span class="keyword">name</span>: local-ca-cluster-issuer
+<span class="keyword">spec</span>:
+  <span class="keyword">ca</span>:
+    <span class="keyword">secretName</span>: local-dev-root-ca</code>
+                </div>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Apply and Verify</span>
+                    <span>PowerShell / Bash</span>
+                </div>
+                <div class="code-block">
+<code>kubectl apply -f ca-cluster-issuer.yaml
+
+# Verify ClusterIssuer is ready
+kubectl get clusterissuer</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Generate Certificates Section -->
+        <div class="content-section" id="generate-certs">
+            <div class="section-header">
+                <div class="step-number">4</div>
+                <h2>Generate Certificates for Kong</h2>
+            </div>
+
+            <div class="note alert-box">
+                <strong><i class="fas fa-info-circle"></i> Note:</strong> Create separate certificates for each Kong service endpoint.
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-file-alt"></i> kong-certificates.yaml</span>
+                    <span>Kubernetes Manifest</span>
+                </div>
+                <div class="code-block">
+<code><span class="keyword">apiVersion</span>: cert-manager.io/v1
+<span class="keyword">kind</span>: Certificate
+<span class="keyword">metadata</span>:
+  <span class="keyword">name</span>: kong-proxy-tls
+  <span class="keyword">namespace</span>: kong
+<span class="keyword">spec</span>:
+  <span class="keyword">secretName</span>: kong-proxy-tls
+  <span class="keyword">issuerRef</span>:
+    <span class="keyword">name</span>: local-ca-cluster-issuer
+    <span class="keyword">kind</span>: ClusterIssuer
+  <span class="keyword">dnsNames</span>:
+    - kong-proxy.local
+---
+<span class="keyword">apiVersion</span>: cert-manager.io/v1
+<span class="keyword">kind</span>: Certificate
+<span class="keyword">metadata</span>:
+  <span class="keyword">name</span>: kong-admin-tls
+  <span class="keyword">namespace</span>: kong
+<span class="keyword">spec</span>:
+  <span class="keyword">secretName</span>: kong-admin-tls
+  <span class="keyword">issuerRef</span>:
+    <span class="keyword">name</span>: local-ca-cluster-issuer
+    <span class="keyword">kind</span>: ClusterIssuer
+  <span class="keyword">dnsNames</span>:
+    - kong-admin.local
+---
+<span class="keyword">apiVersion</span>: cert-manager.io/v1
+<span class="keyword">kind</span>: Certificate
+<span class="keyword">metadata</span>:
+  <span class="keyword">name</span>: kong-ui-tls
+  <span class="keyword">namespace</span>: kong
+<span class="keyword">spec</span>:
+  <span class="keyword">secretName</span>: kong-ui-tls
+  <span class="keyword">issuerRef</span>:
+    <span class="keyword">name</span>: local-ca-cluster-issuer
+    <span class="keyword">kind</span>: ClusterIssuer
+  <span class="keyword">dnsNames</span>:
+    - kong-ui.local
+    - kong-manager.local</code>
+                </div>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Apply and Verify Certificates</span>
+                    <span>PowerShell / Bash</span>
+                </div>
+                <div class="code-block">
+<code>kubectl apply -f kong-certificates.yaml
+
+# Verify certificates are ready
+kubectl get certificates -n kong
+kubectl get secrets -n kong | grep tls</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configure Ingress Section -->
+        <div class="content-section" id="configure-ingress">
+            <div class="section-header">
+                <div class="step-number">5</div>
+                <h2>Configure Ingress for HTTPS</h2>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-file-alt"></i> kong-ingress.yaml</span>
+                    <span>Kubernetes Manifest</span>
+                </div>
+                <div class="code-block">
+<code><span class="keyword">apiVersion</span>: networking.k8s.io/v1
+<span class="keyword">kind</span>: Ingress
+<span class="keyword">metadata</span>:
+  <span class="keyword">name</span>: kong-proxy-ingress
+  <span class="keyword">namespace</span>: kong
+  <span class="keyword">annotations</span>:
+    cert-manager.io/cluster-issuer: local-ca-cluster-issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: <span class="string">"true"</span>
+<span class="keyword">spec</span>:
+  <span class="keyword">ingressClassName</span>: nginx
+  <span class="keyword">tls</span>:
+  - <span class="keyword">hosts</span>:
+    - kong-proxy.local
+    <span class="keyword">secretName</span>: kong-proxy-tls
+  <span class="keyword">rules</span>:
+  - <span class="keyword">host</span>: kong-proxy.local
+    <span class="keyword">http</span>:
+      <span class="keyword">paths</span>:
+      - <span class="keyword">path</span>: /
+        <span class="keyword">pathType</span>: Prefix
+        <span class="keyword">backend</span>:
+          <span class="keyword">service</span>:
+            <span class="keyword">name</span>: kong-proxy
+            <span class="keyword">port</span>:
+              <span class="keyword">number</span>: 80
+---
+<span class="keyword">apiVersion</span>: networking.k8s.io/v1
+<span class="keyword">kind</span>: Ingress
+<span class="keyword">metadata</span>:
+  <span class="keyword">name</span>: kong-admin-ingress
+  <span class="keyword">namespace</span>: kong
+  <span class="keyword">annotations</span>:
+    cert-manager.io/cluster-issuer: local-ca-cluster-issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: <span class="string">"true"</span>
+<span class="keyword">spec</span>:
+  <span class="keyword">ingressClassName</span>: nginx
+  <span class="keyword">tls</span>:
+  - <span class="keyword">hosts</span>:
+    - kong-admin.local
+    <span class="keyword">secretName</span>: kong-admin-tls
+  <span class="keyword">rules</span>:
+  - <span class="keyword">host</span>: kong-admin.local
+    <span class="keyword">http</span>:
+      <span class="keyword">paths</span>:
+      - <span class="keyword">path</span>: /
+        <span class="keyword">pathType</span>: Prefix
+        <span class="keyword">backend</span>:
+          <span class="keyword">service</span>:
+            <span class="keyword">name</span>: kong-admin
+            <span class="keyword">port</span>:
+              <span class="keyword">number</span>: 8001
+---
+<span class="keyword">apiVersion</span>: networking.k8s.io/v1
+<span class="keyword">kind</span>: Ingress
+<span class="keyword">metadata</span>:
+  <span class="keyword">name</span>: kong-ui-ingress
+  <span class="keyword">namespace</span>: kong
+  <span class="keyword">annotations</span>:
+    cert-manager.io/cluster-issuer: local-ca-cluster-issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: <span class="string">"true"</span>
+<span class="keyword">spec</span>:
+  <span class="keyword">ingressClassName</span>: nginx
+  <span class="keyword">tls</span>:
+  - <span class="keyword">hosts</span>:
+    - kong-ui.local
+    <span class="keyword">secretName</span>: kong-ui-tls
+  <span class="keyword">rules</span>:
+  - <span class="keyword">host</span>: kong-ui.local
+    <span class="keyword">http</span>:
+      <span class="keyword">paths</span>:
+      - <span class="keyword">path</span>: /
+        <span class="keyword">pathType</span>: Prefix
+        <span class="keyword">backend</span>:
+          <span class="keyword">service</span>:
+            <span class="keyword">name</span>: kong-manager
+            <span class="keyword">port</span>:
+              <span class="keyword">number</span>: 8002</code>
+                </div>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Apply Ingress Configuration</span>
+                    <span>PowerShell / Bash</span>
+                </div>
+                <div class="code-block">
+<code>kubectl apply -f kong-ingress.yaml
+
+# Verify ingress configuration
+kubectl get ingress -n kong
+kubectl describe ingress kong-proxy-ingress -n kong</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Local DNS Section -->
+        <div class="content-section" id="local-dns">
+            <div class="section-header">
+                <div class="step-number">6</div>
+                <h2>Configure Local DNS</h2>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-file-alt"></i> Hosts File Configuration</span>
+                    <span>System Configuration</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># Windows: C:\Windows\System32\drivers\etc\hosts (Run as Administrator)</span>
+<span class="comment"># Linux/Mac: /etc/hosts</span>
+
+127.0.0.1 kong-proxy.local
+127.0.0.1 kong-admin.local
+127.0.0.1 kong-ui.local
+127.0.0.1 kong-manager.local</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trust Root CA Section -->
+        <div class="content-section" id="trust-ca">
+            <div class="section-header">
+                <div class="step-number">7</div>
+                <h2>Trust Root CA Certificate (Optional)</h2>
+            </div>
+
+            <div class="note alert-box">
+                <strong><i class="fas fa-info-circle"></i> Note:</strong> This step eliminates browser security warnings for self-signed certificates.
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Export and Install Root CA</span>
+                    <span>PowerShell / Bash</span>
+                </div>
+                <div class="code-block">
+<code># Export root CA certificate
+kubectl get secret local-dev-root-ca -n cert-manager -o jsonpath='{.data.ca\.crt}' | base64 -d > local-dev-root-ca.crt
+
+# Windows: Import Certificate
+# 1. Double-click local-dev-root-ca.crt
+# 2. Click "Install Certificate"
+# 3. Choose "Local Machine"
+# 4. Select "Trusted Root Certification Authorities"
+# 5. Complete the wizard</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Verify Setup Section -->
+        <div class="content-section" id="verify">
+            <div class="section-header">
+                <div class="step-number">8</div>
+                <h2>Verify HTTPS Setup</h2>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Test Kong Endpoints</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code># PowerShell - Test Kong endpoints
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/status"</span> -SkipCertificateCheck
+Invoke-WebRequest -Uri <span class="string">"https://kong-proxy.local"</span> -SkipCertificateCheck
+
+# Browser - Open these URLs
+# https://kong-ui.local
+# https://kong-admin.local
+# https://kong-proxy.local</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Summary -->
+        <div class="content-section" id="summary">
+            <div class="section-header">
+                <div class="step-number">✅</div>
+                <h2>Final Configuration Summary</h2>
+            </div>
+
+            <div class="success alert-box">
+                <h3><i class="fas fa-check-circle"></i> Setup Complete</h3>
+                <p>Your Kong API Gateway is now secured with HTTPS. All endpoints use encrypted connections with automated certificate management.</p>
+                <p><strong>Next Steps:</strong></p>
+                <ul>
+                    <li>Proceed to <strong>Guide 2</strong> to configure your applications with Kong</li>
+                    <li>Refer to <strong>Guide 3</strong> if you encounter any issues</li>
+                </ul>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-server"></i> Service</th>
+                            <th><i class="fas fa-link"></i> HTTPS URL</th>
+                            <th><i class="fas fa-certificate"></i> Certificate</th>
+                            <th><i class="fas fa-tasks"></i> Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Kong Admin API</strong></td>
+                            <td><code>https://kong-admin.local</code></td>
+                            <td>kong-admin-tls</td>
+                            <td>Configuration management</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Kong Proxy</strong></td>
+                            <td><code>https://kong-proxy.local</code></td>
+                            <td>kong-proxy-tls</td>
+                            <td>API Gateway (public facing)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Kong Manager UI</strong></td>
+                            <td><code>https://kong-ui.local</code></td>
+                            <td>kong-ui-tls</td>
+                            <td>Web-based administration</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Important Notes -->
+        <div class="content-section" id="notes">
+            <div class="warning alert-box">
+                <h3><i class="fas fa-exclamation-triangle"></i> Important Notes</h3>
+                <ul>
+                    <li><strong>PowerShell 7+:</strong> Required for <code class="code-inline">-SkipCertificateCheck</code> parameter</li>
+                    <li><strong>Self-signed certificates:</strong> Suitable for local development only</li>
+                    <li><strong>Production:</strong> Use proper CA-signed certificates (Let's Encrypt, etc.)</li>
+                    <li><strong>Certificate renewal:</strong> cert-manager handles this automatically</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Footer Navigation -->
+        <div class="content-section" style="text-align: center; padding: 20px;">
+            <a href="#toc" class="nav-button" style="display: inline-block; width: auto; margin: 10px;">
+                <i class="fas fa-arrow-up"></i> Back to Top
+            </a>
+            <button onclick="window.print()" class="nav-button" style="display: inline-block; width: auto; margin: 10px;">
+                <i class="fas fa-print"></i> Print This Guide
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Back to Top functionality
+        const backToTop = document.getElementById('backToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTop.classList.add('visible');
+            } else {
+                backToTop.classList.remove('visible');
+            }
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 20,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Highlight current section in navigation
+        const sections = document.querySelectorAll('.content-section');
+        const navLinks = document.querySelectorAll('.guide-navigation a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

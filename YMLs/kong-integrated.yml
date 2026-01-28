@@ -1,10 +1,14 @@
-# Lightweight Kong setup for limited resources
+# ------------------------------------------------------------
+# Namespace
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Namespace
 metadata:
   name: kong
 ---
-# PostgreSQL PersistentVolumeClaim
+# ------------------------------------------------------------
+# PostgreSQL PVC
+# ------------------------------------------------------------
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -17,7 +21,9 @@ spec:
     requests:
       storage: 2Gi
 ---
+# ------------------------------------------------------------
 # PostgreSQL Deployment
+# ------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -36,84 +42,75 @@ spec:
       containers:
       - name: postgres
         image: postgres:15-alpine
-        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5432
         env:
         - name: POSTGRES_USER
-          value: "kong"
+          value: kong
         - name: POSTGRES_PASSWORD
-          value: "kong123"
+          value: kong123
         - name: POSTGRES_DB
-          value: "kong"
+          value: kong
         - name: PGDATA
-          value: "/var/lib/postgresql/data/pgdata"
+          value: /var/lib/postgresql/data/pgdata
         volumeMounts:
         - name: postgres-storage
           mountPath: /var/lib/postgresql/data
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "250m"
       volumes:
       - name: postgres-storage
         persistentVolumeClaim:
           claimName: postgres-pvc
 ---
+# ------------------------------------------------------------
 # PostgreSQL Service
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
   name: postgres
   namespace: kong
 spec:
-  type: ClusterIP
   selector:
     app: postgres
   ports:
   - port: 5432
-    targetPort: 5432
 ---
+# ------------------------------------------------------------
 # Kong Migration Job
+# ------------------------------------------------------------
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: kong-migration-job
   namespace: kong
 spec:
+  backoffLimit: 3
   template:
     spec:
       restartPolicy: OnFailure
       initContainers:
       - name: wait-for-postgres
         image: postgres:15-alpine
-        imagePullPolicy: IfNotPresent
-        command: ['sh', '-c', 'until pg_isready -h postgres -U kong; do sleep 2; done']
+        command: ["sh", "-c", "until pg_isready -h postgres -U kong; do sleep 2; done"]
       containers:
       - name: kong-migration
         image: kong:3.8
-        imagePullPolicy: IfNotPresent
+        command: ["kong", "migrations", "bootstrap"]
         env:
         - name: KONG_DATABASE
-          value: "postgres"
+          value: postgres
         - name: KONG_PG_HOST
-          value: "postgres"
+          value: postgres
         - name: KONG_PG_USER
-          value: "kong"
+          value: kong
         - name: KONG_PG_PASSWORD
-          value: "kong123"
+          value: kong123
         - name: KONG_PG_DATABASE
-          value: "kong"
-        command: ["kong", "migrations", "bootstrap"]
-        resources:
-          limits:
-            memory: "512Mi"
-  backoffLimit: 3
+          value: kong
 ---
+# ------------------------------------------------------------
 # Kong Deployment
+# ------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -129,157 +126,142 @@ spec:
       labels:
         app: kong
     spec:
-      initContainers:
-      - name: wait-for-migrations
-        image: busybox:1.36
-        imagePullPolicy: IfNotPresent
-        command: ['sh', '-c', 'echo "Waiting 60s for migrations..." && sleep 60']
       containers:
       - name: kong
         image: kong:3.8
-        imagePullPolicy: IfNotPresent
         env:
         - name: KONG_DATABASE
-          value: "postgres"
+          value: postgres
         - name: KONG_PG_HOST
-          value: "postgres"
+          value: postgres
         - name: KONG_PG_USER
-          value: "kong"
+          value: kong
         - name: KONG_PG_PASSWORD
-          value: "kong123"
+          value: kong123
         - name: KONG_PG_DATABASE
-          value: "kong"
+          value: kong
+
+        # Proxy
         - name: KONG_PROXY_LISTEN
-          value: "0.0.0.0:8000"
+          value: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+
+        # Admin
         - name: KONG_ADMIN_LISTEN
           value: "0.0.0.0:8001"
+
+        # Manager UI
         - name: KONG_ADMIN_GUI_LISTEN
           value: "0.0.0.0:8002"
         - name: KONG_ADMIN_GUI_URL
-          value: "http://kong-ui.local"
+          value: "https://kong-ui.local"
         - name: KONG_ADMIN_GUI_API_URL
-          value: "http://kong-ui.local/api"
-        - name: KONG_PROXY_ACCESS_LOG
-          value: "/dev/stdout"
-        - name: KONG_ADMIN_ACCESS_LOG
-          value: "/dev/stdout"
-        - name: KONG_PROXY_ERROR_LOG
-          value: "/dev/stderr"
-        - name: KONG_ADMIN_ERROR_LOG
-          value: "/dev/stderr"
-        # Reduce Kong memory usage
-        - name: KONG_MEM_CACHE_SIZE
-          value: "64m"
-        - name: KONG_NGINX_WORKER_PROCESSES
-          value: "1"
+          value: "https://kong-admin.local"
+
         ports:
         - containerPort: 8000
+          hostPort: 80        # <--- binds HTTP to host port 80
+        - containerPort: 8443
+          hostPort: 443       # <--- binds HTTPS to host port 443
         - containerPort: 8001
+          hostPort: 8001
         - containerPort: 8002
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "250m"
-          limits:
-            memory: "1536Mi"  # 1.5GB - between 1GB and 2GB
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /status
-            port: 8001
-          initialDelaySeconds: 120
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /status
-            port: 8001
-          initialDelaySeconds: 60
-          periodSeconds: 5
+          hostPort: 8002
 ---
-# Services
+# ------------------------------------------------------------
+# Kong Proxy Service
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
   name: kong-proxy
   namespace: kong
 spec:
-  type: ClusterIP
   selector:
     app: kong
   ports:
-  - name: proxy
-    port: 8000
+  - name: http
+    port: 80
     targetPort: 8000
+  - name: https
+    port: 443
+    targetPort: 8443
 ---
+# ------------------------------------------------------------
+# Kong Admin Service
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
   name: kong-admin
   namespace: kong
 spec:
-  type: ClusterIP
   selector:
     app: kong
   ports:
-  - name: admin
-    port: 8001
+  - port: 8001
     targetPort: 8001
 ---
+# ------------------------------------------------------------
+# Kong Manager Service
+# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
   name: kong-manager
   namespace: kong
 spec:
-  type: ClusterIP
   selector:
     app: kong
   ports:
-  - name: manager
-    port: 8002
+  - port: 8002
     targetPort: 8002
 ---
-# Combined Ingress for Kong UI (Manager + Admin API on same host)
+# ------------------------------------------------------------
+# Ingress: Kong Proxy (DATA PLANE)
+# ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: kong-ui-ingress
+  name: kong-proxy-ingress
   namespace: kong
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    cert-manager.io/cluster-issuer: local-ca-cluster-issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
+  tls:
+  - hosts:
+    - kong-proxy.local
+    secretName: kong-proxy-tls
   rules:
-  - host: kong-ui.local
+  - host: kong-proxy.local
     http:
       paths:
-      # Admin API accessible at kong-ui.local/api/*
-      - path: /api(/|$)(.*)
-        pathType: ImplementationSpecific
+      - path: /
+        pathType: Prefix
         backend:
           service:
-            name: kong-admin
+            name: kong-proxy
             port:
-              number: 8001
-      # Kong Manager UI accessible at kong-ui.local/*
-      - path: /()(.*)
-        pathType: ImplementationSpecific
-        backend:
-          service:
-            name: kong-manager
-            port:
-              number: 8002
+              number: 80
 ---
-# Ingress for Kong Admin API (standalone access via kong-admin.local)
+# ------------------------------------------------------------
+# Ingress: Kong Admin API (CONTROL PLANE)
+# ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: kong-admin-ingress
   namespace: kong
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: local-ca-cluster-issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
+  tls:
+  - hosts:
+    - kong-admin.local
+    secretName: kong-admin-tls
   rules:
   - host: kong-admin.local
     http:
@@ -292,24 +274,31 @@ spec:
             port:
               number: 8001
 ---
-# Ingress for Kong Proxy
+# ------------------------------------------------------------
+# Ingress: Kong Manager UI
+# ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: kong-proxy-ingress
+  name: kong-ui-ingress
   namespace: kong
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: local-ca-cluster-issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   ingressClassName: nginx
+  tls:
+  - hosts:
+    - kong-ui.local
+    secretName: kong-ui-tls
   rules:
-  - host: kong-proxy.local
+  - host: kong-ui.local
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: kong-proxy
+            name: kong-manager
             port:
-              number: 8000
+              number: 8002

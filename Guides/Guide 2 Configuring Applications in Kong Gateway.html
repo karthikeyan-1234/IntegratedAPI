@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide 2: Configuring Applications in Kong Gateway</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Professional CSS Reset and Base Styles */
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #1abc9c;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --info: #3498db;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --border-radius: 8px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.7;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Styles */
+        .guide-header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 40px;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .guide-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+            opacity: 0.3;
+        }
+
+        .guide-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .guide-header .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            max-width: 800px;
+            position: relative;
+        }
+
+        /* Table of Contents */
+        .toc-container {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: var(--shadow);
+            border-left: 5px solid var(--accent);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            color: var(--primary);
+        }
+
+        .toc-header i {
+            font-size: 1.8rem;
+            color: var(--accent);
+        }
+
+        .toc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .toc-section {
+            background: var(--light);
+            padding: 20px;
+            border-radius: calc(var(--border-radius) - 2px);
+            transition: var(--transition);
+            border: 2px solid transparent;
+        }
+
+        .toc-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            border-color: var(--accent);
+        }
+
+        .toc-section h3 {
+            color: var(--secondary);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ddd;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toc-section ul {
+            list-style: none;
+        }
+
+        .toc-section li {
+            margin-bottom: 12px;
+            position: relative;
+            padding-left: 25px;
+        }
+
+        .toc-section li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .toc-section a {
+            color: var(--dark);
+            text-decoration: none;
+            transition: var(--transition);
+            display: block;
+            padding: 5px 0;
+        }
+
+        .toc-section a:hover {
+            color: var(--accent);
+            padding-left: 5px;
+        }
+
+        /* Main Content Sections */
+        .content-section {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .content-section:hover {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light);
+        }
+
+        .step-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--accent), var(--secondary));
+            color: white;
+            border-radius: 50%;
+            font-size: 1.4rem;
+            font-weight: bold;
+            flex-shrink: 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .section-header h2 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin: 0;
+        }
+
+        .section-subheader {
+            color: var(--secondary);
+            font-size: 1.3rem;
+            margin: 25px 0 15px 0;
+            padding-left: 15px;
+            border-left: 4px solid var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Alert Boxes */
+        .alert-box {
+            padding: 20px;
+            border-radius: var(--border-radius);
+            margin: 20px 0;
+            border-left: 5px solid;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .alert-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: inherit;
+            opacity: 0.3;
+        }
+
+        .alert-box h3, .alert-box h4 {
+            color: inherit;
+            margin-top: 0;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .note {
+            background: linear-gradient(135deg, #e8f4fd, #d4e9fa);
+            border-left-color: var(--info);
+            color: #2c5282;
+        }
+
+        .warning {
+            background: linear-gradient(135deg, #fef9e7, #fcf3cf);
+            border-left-color: var(--warning);
+            color: #7d6608;
+        }
+
+        .success {
+            background: linear-gradient(135deg, #e8f8ef, #d5f4e6);
+            border-left-color: var(--success);
+            color: #1e8449;
+        }
+
+        .critical {
+            background: linear-gradient(135deg, #fdedec, #fadbd8);
+            border-left-color: var(--danger);
+            color: #922b21;
+        }
+
+        .architecture {
+            background: linear-gradient(135deg, #e8f6f3, #d1f2eb);
+            border-left-color: var(--accent);
+            color: #0e6251;
+        }
+
+        /* Code Blocks */
+        .code-block-container {
+            background: #1a1a1a;
+            border-radius: var(--border-radius);
+            margin: 20px 0;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .code-header {
+            background: #2d2d2d;
+            color: #ccc;
+            padding: 12px 20px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #404040;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .code-block {
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .code-block code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #f8f8f2;
+            white-space: pre;
+        }
+
+        .code-block .comment { color: #6272a4; }
+        .code-block .string { color: #f1fa8c; }
+        .code-block .keyword { color: #ff79c6; }
+        .code-block .function { color: #50fa7b; }
+        .code-block .number { color: #bd93f9; }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            margin: 25px 0;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: white;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        thead {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        th {
+            color: white;
+            padding: 18px 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        td {
+            padding: 15px 20px;
+            border-top: 1px solid var(--light);
+            border-bottom: 1px solid var(--light);
+        }
+
+        tbody tr {
+            transition: var(--transition);
+        }
+
+        tbody tr:hover {
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        /* Navigation */
+        .guide-navigation {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 15px;
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .nav-button {
+            display: block;
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: calc(var(--border-radius) - 2px);
+            cursor: pointer;
+            transition: var(--transition);
+            text-align: center;
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .nav-button:hover {
+            background: var(--secondary);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Back to Top */
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--accent);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-shadow: 0 6px 15px rgba(26, 188, 156, 0.4);
+            transition: var(--transition);
+            opacity: 0;
+            visibility: hidden;
+            z-index: 999;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            background: var(--secondary);
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .guide-header {
+                padding: 25px 20px;
+            }
+            
+            .guide-header h1 {
+                font-size: 2rem;
+            }
+            
+            .toc-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .content-section {
+                padding: 20px;
+            }
+            
+            .guide-navigation {
+                position: static;
+                margin: 20px 0;
+                width: 100%;
+            }
+            
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .step-number {
+                width: 45px;
+                height: 45px;
+                font-size: 1.2rem;
+            }
+        }
+
+        /* Utility Classes */
+        .code-inline {
+            background: #f1f5f9;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            color: var(--danger);
+            border: 1px solid #ddd;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #a5d6a7 0%, #a5d6a7 100%);
+            background-repeat: no-repeat;
+            background-size: 100% 0.4em;
+            background-position: 0 90%;
+            padding: 0.1rem 0.3rem;
+        }
+
+        /* Section Dividers */
+        .section-divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            margin: 40px 0;
+            opacity: 0.5;
+        }
+
+        /* Icon Styling */
+        .icon {
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Sidebar -->
+    <div class="guide-navigation">
+        <a href="#toc" class="nav-button">
+            <i class="fas fa-list"></i> Table of Contents
+        </a>
+        <a href="#overview" class="nav-button">
+            <i class="fas fa-home"></i> Overview
+        </a>
+        <a href="#verify-config" class="nav-button">
+            <i class="fas fa-check-circle"></i> Verify Config
+        </a>
+        <a href="#summary" class="nav-button">
+            <i class="fas fa-clipboard-check"></i> Summary
+        </a>
+        <button onclick="window.print()" class="nav-button">
+            <i class="fas fa-print"></i> Print Guide
+        </button>
+    </div>
+
+    <!-- Back to Top Button -->
+    <a href="#" class="back-to-top" id="backToTop">
+        <i class="fas fa-arrow-up"></i>
+    </a>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="guide-header">
+            <h1><i class="fas fa-rocket"></i> Guide 2: Configuring Applications in Kong Gateway</h1>
+            <p class="subtitle">Complete guide to register and configure applications (IntegratedAPI and Angular) with Kong Gateway for HTTPS access.</p>
+        </header>
+
+        <!-- Table of Contents -->
+        <div class="toc-container" id="toc">
+            <div class="toc-header">
+                <i class="fas fa-bookmark"></i>
+                <h2>Table of Contents</h2>
+            </div>
+            <div class="toc-grid">
+                <div class="toc-section">
+                    <h3><i class="fas fa-play-circle"></i> Getting Started</h3>
+                    <ul>
+                        <li><a href="#overview"><i class="fas fa-eye"></i> Architecture Overview</a></li>
+                        <li><a href="#verify-prereq"><i class="fas fa-check"></i> Verify Prerequisites</a></li>
+                    </ul>
+                </div>
+                <div class="toc-section">
+                    <h3><i class="fas fa-server"></i> IntegratedAPI Setup</h3>
+                    <ul>
+                        <li><a href="#register-api"><i class="fas fa-plus"></i> Register API Service</a></li>
+                        <li><a href="#create-api-routes"><i class="fas fa-route"></i> Create API Routes</a></li>
+                        <li><a href="#test-api"><i class="fas fa-vial"></i> Test API Endpoints</a></li>
+                    </ul>
+                </div>
+                <div class="toc-section">
+                    <h3><i class="fas fa-window-restore"></i> Angular Setup</h3>
+                    <ul>
+                        <li><a href="#register-angular"><i class="fas fa-plus"></i> Register Angular Service</a></li>
+                        <li><a href="#angular-route"><i class="fas fa-route"></i> Create Angular Route</a></li>
+                        <li><a href="#test-angular"><i class="fas fa-vial"></i> Test Angular App</a></li>
+                    </ul>
+                </div>
+                <div class="toc-section">
+                    <h3><i class="fas fa-check-double"></i> Verification & Management</h3>
+                    <ul>
+                        <li><a href="#verify-config"><i class="fas fa-check-circle"></i> Verify Configuration</a></li>
+                        <li><a href="#endpoint-summary"><i class="fas fa-list"></i> Endpoint Summary</a></li>
+                        <li><a href="#management"><i class="fas fa-cogs"></i> Management Operations</a></li>
+                        <li><a href="#summary"><i class="fas fa-flag-checkered"></i> Final Summary</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overview Section -->
+        <div class="content-section" id="overview">
+            <div class="section-header">
+                <div class="step-number">1</div>
+                <h2>Architecture Overview</h2>
+            </div>
+            
+            <div class="note alert-box">
+                <strong><i class="fas fa-exclamation-circle"></i> Prerequisites:</strong> Complete <strong>Guide 1</strong> first. Kong must be running with HTTPS configured at <code class="code-inline">https://kong-admin.local</code> and <code class="code-inline">https://kong-proxy.local</code>.
+            </div>
+
+            <div class="architecture alert-box">
+                <h3><i class="fas fa-sitemap"></i> Applications to Configure</h3>
+                <ul>
+                    <li><strong>IntegratedAPI:</strong> .NET API with Swagger documentation</li>
+                    <li><strong>Angular App:</strong> Frontend application with base href="/web/"</li>
+                    <li><strong>Kong Services:</strong> Backend service definitions</li>
+                    <li><strong>Kong Routes:</strong> URL path mappings with proper configuration</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Verify Prerequisites Section -->
+        <div class="content-section" id="verify-prereq">
+            <div class="section-header">
+                <div class="step-number">2</div>
+                <h2>Verify Prerequisites</h2>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Verify Kong and Applications</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># PowerShell 7+ - Verify Kong is accessible</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/status"</span> -SkipCertificateCheck
+
+<span class="comment"># Verify your applications are running</span>
+kubectl get pods
+kubectl get svc
+
+<span class="comment"># Expected services:</span>
+<span class="comment"># - integratedapi-service (port 7080)</span>
+<span class="comment"># - angular-app-service (port 80)</span></code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Register IntegratedAPI Service Section -->
+        <div class="content-section" id="register-api">
+            <div class="section-header">
+                <div class="step-number">3</div>
+                <h2>Register IntegratedAPI Service</h2>
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-plus-circle"></i> 3.1 Create Kong Service</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Register .NET API Service</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># Register the .NET API service with Kong</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/services/"</span> `
+    -Method POST `
+    -ContentType <span class="string">'application/json'</span> `
+    -Body (@{
+        name = <span class="string">"integratedapi-service"</span>
+        url = <span class="string">"http://integratedapi-service.default.svc.cluster.local:7080"</span>
+    } | ConvertTo-Json) `
+    -SkipCertificateCheck</code>
+                </div>
+            </div>
+
+            <div class="success alert-box">
+                <strong><i class="fas fa-check"></i> Expected Response:</strong> JSON with service details including <code class="code-inline">id</code> and <code class="code-inline">name</code>.
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-route"></i> 3.2 Create Routes for API</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Create API Routes</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># Create Swagger UI route</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/services/integratedapi-service/routes"</span> `
+    -Method POST `
+    -ContentType <span class="string">'application/json'</span> `
+    -Body (@{
+        name = <span class="string">"integratedapi-swagger-route"</span>
+        paths = @(<span class="string">"/swagger"</span>)
+        strip_path = $false
+    } | ConvertTo-Json) `
+    -SkipCertificateCheck
+
+<span class="comment"># Create API endpoints route</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/services/integratedapi-service/routes"</span> `
+    -Method POST `
+    -ContentType <span class="string">'application/json'</span> `
+    -Body (@{
+        name = <span class="string">"integratedapi-api-route"</span>
+        paths = @(<span class="string">"/api"</span>)
+        strip_path = $false
+    } | ConvertTo-Json) `
+    -SkipCertificateCheck
+
+<span class="comment"># Create WeatherForecast route (example)</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/services/integratedapi-service/routes"</span> `
+    -Method POST `
+    -ContentType <span class="string">'application/json'</span> `
+    -Body (@{
+        name = <span class="string">"integratedapi-weather-route"</span>
+        paths = @(<span class="string">"/WeatherForecast"</span>)
+        strip_path = $false
+    } | ConvertTo-Json) `
+    -SkipCertificateCheck</code>
+                </div>
+            </div>
+
+            <div class="note alert-box">
+                <strong><i class="fas fa-info-circle"></i> Route Configuration Notes:</strong>
+                <ul>
+                    <li><code class="code-inline">strip_path = $false</code>: Keeps the path prefix when forwarding to upstream (API expects <code class="code-inline">/swagger</code>, <code class="code-inline">/api</code>)</li>
+                    <li><code class="code-inline">paths = @("/swagger")</code>: Matches <code class="code-inline">/swagger</code> and <code class="code-inline">/swagger/*</code></li>
+                </ul>
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-vial"></i> 3.3 Test IntegratedAPI</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Test API Endpoints</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># Test Swagger UI</span>
+Invoke-WebRequest -Uri <span class="string">"https://kong-proxy.local/swagger/index.html"</span> -SkipCertificateCheck
+
+<span class="comment"># Test API endpoint</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-proxy.local/api/Employee/GetEmployees"</span> -SkipCertificateCheck
+
+<span class="comment"># Test WeatherForecast</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-proxy.local/WeatherForecast"</span> -SkipCertificateCheck
+
+<span class="comment"># Browser test: Open https://kong-proxy.local/swagger/index.html</span></code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Register Angular Application Section -->
+        <div class="content-section" id="register-angular">
+            <div class="section-header">
+                <div class="step-number">4</div>
+                <h2>Register Angular Application Service</h2>
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-plus-circle"></i> 4.1 Create Kong Service for Angular</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Register Angular App Service</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># Register the Angular app service</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/services/"</span> `
+    -Method POST `
+    -ContentType <span class="string">'application/json'</span> `
+    -Body (@{
+        name = <span class="string">"angular-app-service"</span>
+        url = <span class="string">"http://angular-app-service.default.svc.cluster.local:80"</span>
+    } | ConvertTo-Json) `
+    -SkipCertificateCheck</code>
+                </div>
+            </div>
+
+            <div class="warning alert-box">
+                <strong><i class="fas fa-exclamation-triangle"></i> Common Mistake:</strong> Ensure the port is <code class="code-inline">80</code> (nginx default), not <code class="code-inline">7080</code> (API port).
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-route"></i> 4.2 Create Route for Angular App</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Create Angular Route</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># Create /web route with strip_path=true</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/services/angular-app-service/routes"</span> `
+    -Method POST `
+    -ContentType <span class="string">'application/json'</span> `
+    -Body (@{
+        name = <span class="string">"angular-app-route"</span>
+        paths = @(<span class="string">"/web"</span>, <span class="string">"/web/"</span>)
+        strip_path = $true
+        preserve_host = $true
+    } | ConvertTo-Json) `
+    -SkipCertificateCheck</code>
+                </div>
+            </div>
+
+            <div class="critical alert-box">
+                <h4><i class="fas fa-exclamation-circle"></i> CRITICAL: Why strip_path=true for Angular?</h4>
+                <p>Your Angular app is built with <code class="code-inline">&lt;base href="/web/"&gt;</code>. Here's what happens:</p>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Browser Request</th>
+                                <th>Kong Forwards</th>
+                                <th>Nginx Looks For</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code class="code-inline">strip_path = false</code></td>
+                                <td>/web/main.js</td>
+                                <td>/web/main.js</td>
+                                <td>/usr/share/nginx/html<strong>/web</strong>/main.js</td>
+                                <td>❌ 404</td>
+                            </tr>
+                            <tr>
+                                <td><code class="code-inline">strip_path = true</code></td>
+                                <td>/web/main.js</td>
+                                <td>/main.js</td>
+                                <td>/usr/share/nginx/html/main.js</td>
+                                <td>✅ 200</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p><strong>Bottom line:</strong> Kong strips <code class="code-inline">/web</code> before forwarding, but browser still thinks it's at <code class="code-inline">/web/</code> (correct!).</p>
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-vial"></i> 4.3 Test Angular App</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Test Angular via Kong</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># Test Angular app via Kong</span>
+Invoke-WebRequest -Uri <span class="string">"https://kong-proxy.local/web"</span> -SkipCertificateCheck
+
+<span class="comment"># Browser test: Open https://kong-proxy.local/web</span>
+<span class="comment"># You should see your Angular application load with all assets</span></code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Verify Configuration Section -->
+        <div class="content-section" id="verify-config">
+            <div class="section-header">
+                <div class="step-number">5</div>
+                <h2>Verify Complete Configuration</h2>
+            </div>
+
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Verify Kong Configuration</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># List all services</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/services"</span> -SkipCertificateCheck
+
+<span class="comment"># List all routes</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/routes"</span> -SkipCertificateCheck
+
+<span class="comment"># Get specific service details</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/services/angular-app-service"</span> -SkipCertificateCheck
+
+<span class="comment"># Get routes for a specific service</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/services/angular-app-service/routes"</span> -SkipCertificateCheck</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Endpoint Summary Section -->
+        <div class="content-section" id="endpoint-summary">
+            <div class="section-header">
+                <div class="step-number">📊</div>
+                <h2>Final Endpoint Summary</h2>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-cube"></i> Application</th>
+                            <th><i class="fas fa-link"></i> HTTPS URL</th>
+                            <th><i class="fas fa-server"></i> Kong Service</th>
+                            <th><i class="fas fa-route"></i> Kong Route</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Swagger UI</strong></td>
+                            <td><code>https://kong-proxy.local/swagger/index.html</code></td>
+                            <td>integratedapi-service</td>
+                            <td>integratedapi-swagger-route</td>
+                        </tr>
+                        <tr>
+                            <td><strong>API Endpoints</strong></td>
+                            <td><code>https://kong-proxy.local/api/*</code></td>
+                            <td>integratedapi-service</td>
+                            <td>integratedapi-api-route</td>
+                        </tr>
+                        <tr>
+                            <td><strong>WeatherForecast</strong></td>
+                            <td><code>https://kong-proxy.local/WeatherForecast</code></td>
+                            <td>integratedapi-service</td>
+                            <td>integratedapi-weather-route</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Angular Web App</strong></td>
+                            <td><code>https://kong-proxy.local/web</code></td>
+                            <td>angular-app-service</td>
+                            <td>angular-app-route</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Management Operations Section -->
+        <div class="content-section" id="management">
+            <div class="section-header">
+                <div class="step-number">🔧</div>
+                <h2>Common Management Operations</h2>
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-sync-alt"></i> Update a Route</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Change Route Settings</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># Example: Change strip_path setting</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/routes/angular-app-route"</span> `
+    -Method PATCH `
+    -ContentType <span class="string">'application/json'</span> `
+    -Body (@{strip_path = $false} | ConvertTo-Json) `
+    -SkipCertificateCheck</code>
+                </div>
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-trash-alt"></i> Delete a Route</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Remove Route</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># Delete by route name</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/routes/angular-app-route"</span> `
+    -Method DELETE `
+    -SkipCertificateCheck</code>
+                </div>
+            </div>
+
+            <h3 class="section-subheader"><i class="fas fa-edit"></i> Update a Service</h3>
+            <div class="code-block-container">
+                <div class="code-header">
+                    <span><i class="fas fa-terminal"></i> Modify Service Configuration</span>
+                    <span>PowerShell</span>
+                </div>
+                <div class="code-block">
+<code><span class="comment"># Example: Change service port</span>
+Invoke-RestMethod -Uri <span class="string">"https://kong-admin.local/services/angular-app-service"</span> `
+    -Method PATCH `
+    -ContentType <span class="string">'application/json'</span> `
+    -Body (@{port = 80} | ConvertTo-Json) `
+    -SkipCertificateCheck</code>
+                </div>
+            </div>
+        </div>
+
+        <!-- Final Summary Section -->
+        <div class="content-section" id="summary">
+            <div class="section-header">
+                <div class="step-number">✅</div>
+                <h2>Configuration Complete</h2>
+            </div>
+
+            <div class="success alert-box">
+                <h3><i class="fas fa-check-circle"></i> Applications Successfully Configured!</h3>
+                <p>Your applications are now accessible through Kong Gateway over HTTPS:</p>
+                <ul>
+                    <li>✅ IntegratedAPI accessible at <code class="code-inline">https://kong-proxy.local/swagger</code></li>
+                    <li>✅ API endpoints accessible at <code class="code-inline">https://kong-proxy.local/api/*</code></li>
+                    <li>✅ Angular app accessible at <code class="code-inline">https://kong-proxy.local/web</code></li>
+                    <li>✅ All traffic encrypted with TLS</li>
+                    <li>✅ No port forwarding required</li>
+                </ul>
+            </div>
+
+            <div class="note alert-box">
+                <h3><i class="fas fa-book"></i> Additional Resources</h3>
+                <ul>
+                    <li><strong>Guide 1:</strong> Kong HTTPS Setup (if you need to reconfigure certificates)</li>
+                    <li><strong>Guide 3:</strong> Troubleshooting (if you encounter 503 errors or other issues)</li>
+                    <li><strong>Kong Admin API Docs:</strong> <a href="https://docs.konghq.com/gateway/latest/admin-api/" target="_blank">https://docs.konghq.com/gateway/latest/admin-api/</a></li>
+                </ul>
+            </div>
+
+            <div class="warning alert-box">
+                <h3><i class="fas fa-exclamation-triangle"></i> Important Reminders</h3>
+                <ul>
+                    <li><strong>PowerShell 7+:</strong> Required for <code class="code-inline">-SkipCertificateCheck</code></li>
+                    <li><strong>Service URLs:</strong> Must use Kubernetes internal DNS format (<code class="code-inline">service-name.namespace.svc.cluster.local</code>)</li>
+                    <li><strong>strip_path:</strong> Set to <code class="code-inline">true</code> for Angular apps with base href, <code class="code-inline">false</code> for APIs</li>
+                    <li><strong>Conflicting Ingresses:</strong> Ensure no other ingress rules conflict with Kong (see Guide 3)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Footer Navigation -->
+        <div class="content-section" style="text-align: center; padding: 20px;">
+            <a href="#toc" class="nav-button" style="display: inline-block; width: auto; margin: 10px;">
+                <i class="fas fa-arrow-up"></i> Back to Top
+            </a>
+            <button onclick="window.print()" class="nav-button" style="display: inline-block; width: auto; margin: 10px;">
+                <i class="fas fa-print"></i> Print This Guide
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Back to Top functionality
+        const backToTop = document.getElementById('backToTop');
+        
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                backToTop.classList.add('visible');
+            } else {
+                backToTop.classList.remove('visible');
+            }
+        });
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 20,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+
+        // Highlight current section in navigation
+        const sections = document.querySelectorAll('.content-section');
+        const navLinks = document.querySelectorAll('.guide-navigation a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (pageYOffset >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${current}`) {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

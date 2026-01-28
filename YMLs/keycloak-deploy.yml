@@ -15,6 +15,19 @@ spec:
     requests:
       storage: 1Gi
 ---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: keycloak-tls
+  namespace: keycloak
+spec:
+  secretName: keycloak-tls
+  issuerRef:
+    name: local-ca-cluster-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - keycloak.local
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -43,6 +56,12 @@ spec:
           value: "scripts"
         - name: KC_SPI_SCRIPT_UPLOAD_ENABLED
           value: "true"
+        - name: KC_HOSTNAME
+          value: "keycloak.local"
+        - name: KC_HOSTNAME_STRICT_HTTPS
+          value: "true"
+        - name: KC_PROXY
+          value: "edge"
         ports:
         - containerPort: 8080
         volumeMounts:
@@ -97,9 +116,17 @@ metadata:
   name: keycloak-ingress
   namespace: keycloak
   annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    cert-manager.io/cluster-issuer: local-ca-cluster-issuer
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    nginx.ingress.kubernetes.io/proxy-buffers: "4 256k"
 spec:
   ingressClassName: nginx
+  tls:
+  - hosts:
+    - keycloak.local
+    secretName: keycloak-tls
   rules:
   - host: keycloak.local
     http:

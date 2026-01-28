@@ -1,0 +1,30 @@
+# Verify all required files exist:
+ls -la *.yaml
+# Should have:
+# - cluster-issuer-selfsigned.yaml
+# - root-ca.yaml
+# - ca-cluster-issuer.yaml
+# - kong-proxy-cert.yaml (revised with all 3 certs)
+# - keycloak-certificate.yaml
+
+# Apply in order:
+kubectl apply -f cluster-issuer-selfsigned.yaml
+kubectl apply -f root-ca.yaml
+kubectl wait --for=condition=ready certificate root-ca -n cert-manager
+kubectl apply -f ca-cluster-issuer.yaml
+kubectl apply -f kong-proxy-cert.yaml  # Now has all Kong certs
+kubectl apply -f keycloak-certificate.yaml
+
+# Final verification:
+kubectl get certificates --all-namespaces
+kubectl get secrets -n kong | grep tls
+kubectl get secrets -n keycloak | grep tls
+
+
+📊 Certificate-to-Ingress Mapping:
+Certificate		Secret Name		Hostname(s)							Ingress Reference
+=======================================================================================
+kong-proxy-tls	kong-proxy-tls	kong-proxy.local					kong-proxy-ingress
+kong-admin-tls	kong-admin-tls	kong-admin.local					kong-admin-ingress
+kong-ui-tls		kong-ui-tls		kong-ui.local, kong-manager.local	kong-ui-ingress
+keycloak-tls	keycloak-tls	keycloak.local						keycloak-ingress
