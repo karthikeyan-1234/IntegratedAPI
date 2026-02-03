@@ -12,3 +12,4 @@ obj/
 # Others
 *.log
 *.tmp
+/Test HPA.ps1

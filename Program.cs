@@ -1,4 +1,7 @@
-﻿using IntegratedAPI.Auth;
+﻿using Confluent.Kafka;
+
+using IntegratedAPI.Auth;
+using IntegratedAPI.Background_Services;
 using IntegratedAPI.Contexts;
 using IntegratedAPI.Exceptions;
 using IntegratedAPI.Models.DTOs;
@@ -137,6 +140,36 @@ builder.Services.AddHttpClient();
 
 builder.Services.AddExceptionHandler<ProductExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+
+
+// Kafka Producer
+builder.Services.AddSingleton<IProducer<string, string>>(sp =>
+{
+    var config = new ProducerConfig
+    {
+        BootstrapServers = builder.Configuration["Kafka:BootstrapServers"],
+        Acks = Acks.All,                     // wait for leader + replicas
+        MessageTimeoutMs = 5000
+    };
+    return new ProducerBuilder<string, string>(config).Build();
+});
+
+// Kafka Consumer
+builder.Services.AddSingleton<IConsumer<string, string>>(sp =>
+{
+    var config = new ConsumerConfig
+    {
+        BootstrapServers = builder.Configuration["Kafka:BootstrapServers"],
+        GroupId = "order-service-group",
+        AutoOffsetReset = AutoOffsetReset.Earliest
+    };
+    return new ConsumerBuilder<string, string>(config).Build();
+});
+
+
+//Kafka background service
+builder.Services.AddHostedService<KafkaMonitor>();
 
 
 var app = builder.Build();

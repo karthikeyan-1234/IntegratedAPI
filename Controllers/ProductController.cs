@@ -1,4 +1,6 @@
-﻿using IntegratedAPI.Auth;
+﻿using Confluent.Kafka;
+
+using IntegratedAPI.Auth;
 using IntegratedAPI.Contexts;
 using IntegratedAPI.Exceptions;
 using IntegratedAPI.Models;
@@ -7,6 +9,8 @@ using IntegratedAPI.Models.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
+using System.Text.Json;
 
 namespace IntegratedAPI.Controllers
 {
@@ -18,11 +22,13 @@ namespace IntegratedAPI.Controllers
 
         private readonly ILogger<ProductController> _logger;
         private readonly ProjectDbContext _projectDbContext;
+        private readonly IProducer<string, string> _producer;
 
-        public ProductController(ILogger<ProductController> logger, ProjectDbContext projectDbContext)
+        public ProductController(ILogger<ProductController> logger, ProjectDbContext projectDbContext, IProducer<string,string> producer)
         {
             _logger = logger;
             _projectDbContext = projectDbContext;
+            _producer = producer;
         }
 
         [HttpGet("GetProductsAsync")]
@@ -51,8 +57,11 @@ namespace IntegratedAPI.Controllers
             };
 
 
-            _projectDbContext.Products.Add(newProduct1);
+            var newProductInfo = _projectDbContext.Products.Add(newProduct1).Entity;
             await _projectDbContext.SaveChangesAsync();
+
+            await _producer.ProduceAsync("product-added", new Message<string, string> { Key = newProductInfo.id.ToString(), Value = JsonSerializer.Serialize(newProductInfo)});
+
             return Ok(product);
         }
 

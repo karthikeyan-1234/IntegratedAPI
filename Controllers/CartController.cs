@@ -1,4 +1,6 @@
-﻿using IntegratedAPI.Contexts;
+﻿using IntegratedAPI.Auth;
+using IntegratedAPI.Contexts;
+using IntegratedAPI.Models;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +10,7 @@ namespace IntegratedAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Resource("Cart")]
     public class CartController : ControllerBase
     {
         private ProjectDbContext _context;
@@ -19,6 +22,7 @@ namespace IntegratedAPI.Controllers
 
         //Get all cart items as a list of CartItemInfo DTOs
         [HttpGet("GetCartItemsAsync")]
+        [Permission("read")]
         public async Task<IActionResult> GetCartItemsAsync()
         {
             var cartItems = from cartItem in _context.CartItems
@@ -35,6 +39,7 @@ namespace IntegratedAPI.Controllers
 
         //Add new cartItem
         [HttpPost("AddCartItemAsync")]
+        [Permission("create")]
         public async Task<IActionResult> AddCartItemAsync([FromBody] Models.DTOs.newCartItem newCartItem)
         {
             // check if product exists
@@ -63,6 +68,26 @@ namespace IntegratedAPI.Controllers
             _context.CartItems.Add(cartItem);
             await _context.SaveChangesAsync();
             return Ok(newCartItem);
+        }
+
+
+        //Delete an existing cartItem
+        [HttpDelete("DeleteCartItemAsync")]
+        [Permission("delete")]
+        public async Task<bool> DeleteCartItemAsync(int itemId)
+        {
+            if(_context.CartItems != null)
+            {
+                if(_context.CartItems.Any(x => x.product_id == itemId))
+                {
+                    var cartItem =  await _context.CartItems.Where(x => x.product_id == itemId).FirstAsync();
+                    _context.CartItems.Remove(cartItem);
+                    await _context.SaveChangesAsync();
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

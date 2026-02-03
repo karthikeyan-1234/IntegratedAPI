@@ -8,22 +8,34 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="certs\**" />
     <Compile Remove="elk-dotnet-setup\**" />
     <Compile Remove="ELk\**" />
+    <Compile Remove="Guides\**" />
     <Compile Remove="Prometheus-Grafana-Local\**" />
     <Compile Remove="Prometheus-Grafana\**" />
+    <Compile Remove="YMLs\**" />
+    <Content Remove="certs\**" />
     <Content Remove="elk-dotnet-setup\**" />
     <Content Remove="ELk\**" />
+    <Content Remove="Guides\**" />
     <Content Remove="Prometheus-Grafana-Local\**" />
     <Content Remove="Prometheus-Grafana\**" />
+    <Content Remove="YMLs\**" />
+    <EmbeddedResource Remove="certs\**" />
     <EmbeddedResource Remove="elk-dotnet-setup\**" />
     <EmbeddedResource Remove="ELk\**" />
+    <EmbeddedResource Remove="Guides\**" />
     <EmbeddedResource Remove="Prometheus-Grafana-Local\**" />
     <EmbeddedResource Remove="Prometheus-Grafana\**" />
+    <EmbeddedResource Remove="YMLs\**" />
+    <None Remove="certs\**" />
     <None Remove="elk-dotnet-setup\**" />
     <None Remove="ELk\**" />
+    <None Remove="Guides\**" />
     <None Remove="Prometheus-Grafana-Local\**" />
     <None Remove="Prometheus-Grafana\**" />
+    <None Remove="YMLs\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -44,6 +56,7 @@
     <None Remove="metrics-server-fixed.yaml" />
     <None Remove="Prometheus Grafana Guide.html" />
     <None Remove="sqlserver-deploy.yml" />
+    <None Remove="Test HPA.ps1" />
     <None Remove="TestLoadBalance.ps1" />
   </ItemGroup>
 
@@ -75,6 +88,7 @@
     <PackageReference Include="Serilog.Sinks.Elasticsearch" Version="8.4.1" />
 
     <PackageReference Include="Stripe.net" Version="49.0.0" />
+    <PackageReference Include="Confluent.Kafka" Version="2.11.1" />
   </ItemGroup>
 
   <ItemGroup>
