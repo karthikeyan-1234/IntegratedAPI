@@ -1,4 +1,5 @@
 ﻿using Confluent.Kafka;
+using Confluent.Kafka.Admin;
 
 using IntegratedAPI.Auth;
 using IntegratedAPI.Background_Services;
@@ -11,6 +12,7 @@ using Keycloak.AuthServices.Authorization;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
@@ -20,7 +22,11 @@ using Serilog;
 using Serilog.Formatting.Elasticsearch;
 using Serilog.Sinks.Elasticsearch;
 
+using StackExchange.Redis;
+
+using System.Diagnostics;
 using System.Security.Claims;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -169,8 +175,44 @@ builder.Services.AddSingleton<IConsumer<string, string>>(sp =>
 
 
 //Kafka background service
-builder.Services.AddHostedService<KafkaMonitor>();
+//builder.Services.AddHostedService<KafkaMonitor>();
 
+
+
+// Redis Configuration
+var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    // Option 1: Add Redis distributed cache (simpler)
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "IntegratedAPI";
+    });
+
+    // Option 2: Add Redis ConnectionMultiplexer (more control)
+    builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    {
+        var configuration = ConfigurationOptions.Parse(redisConnectionString);
+        configuration.AbortOnConnectFail = false;
+        configuration.ConnectTimeout = 5000;
+        configuration.SyncTimeout = 5000;
+        return ConnectionMultiplexer.Connect(configuration);
+    });
+
+    // Add Redis health check
+    builder.Services.AddHealthChecks()
+        .AddRedis(redisConnectionString,
+            name: "redis",
+            tags: new[] { "cache", "ready" });
+
+    Console.WriteLine($"Redis configured with connection: {redisConnectionString}");
+}
+else
+{
+    Console.WriteLine("Redis connection string not found, using in-memory cache");
+    builder.Services.AddDistributedMemoryCache();
+}
 
 var app = builder.Build();
 
@@ -353,6 +395,139 @@ app.MapGet("/diagnostics/logstash", async (IConfiguration config) =>
         return Results.Problem($"Failed to connect: {ex.Message}");
     }
 });
+
+
+app.MapGet("/diagnostics/kafka", async (IConfiguration config) =>
+{
+    var bootstrapServers = config["Kafka:BootstrapServers"];
+
+    if (string.IsNullOrEmpty(bootstrapServers))
+    {
+        return Results.Problem("Kafka BootstrapServers not configured");
+    }
+
+    try
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        // Test using AdminClient to get metadata
+        var adminConfig = new AdminClientConfig
+        {
+            BootstrapServers = bootstrapServers
+        };
+
+        using var adminClient = new AdminClientBuilder(adminConfig).Build();
+
+        // Get metadata
+        var metadata = adminClient.GetMetadata(TimeSpan.FromSeconds(5));
+        stopwatch.Stop();
+
+        // Try to list topics
+        var topics = new List<string>();
+        try
+        {
+            var topicMetadata = metadata.Topics;
+            topics = topicMetadata.Select(t => t.Topic).ToList();
+        }
+        catch (Exception)
+        {
+            topics = new List<string>();
+        }
+
+        return Results.Ok(new
+        {
+            Status = "Kafka is reachable",
+            BootstrapServers = bootstrapServers,
+            ConnectionTimeMs = stopwatch.ElapsedMilliseconds,
+            BrokerCount = metadata.Brokers.Count,
+            TopicsCount = topics.Count,
+            Brokers = metadata.Brokers.Select(b => new
+            {
+                Id = b.BrokerId,
+                Host = b.Host,
+                Port = b.Port            }),
+            Topics = topics.Take(10), // Limit to first 10 topics
+            Timestamp = DateTime.UtcNow
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to connect to Kafka: {ex.Message}");
+    }
+});
+
+
+
+app.MapGet("/diagnostics/redis/simple", async (IConfiguration config, IDistributedCache cache, IConnectionMultiplexer redisConnection) =>
+{
+    var connectionString = config["Redis:ConnectionString"];
+
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        return Results.Problem("Redis connection string not configured");
+    }
+
+    try
+    {
+        var stopwatch = Stopwatch.StartNew();
+
+        // Test basic ping
+        var db = redisConnection.GetDatabase();
+        var pingResult = await db.PingAsync();
+
+        // Simple set/get test
+        var testKey = $"test-{Guid.NewGuid()}";
+        var testValue = "test";
+
+        await db.StringSetAsync(testKey, testValue, TimeSpan.FromSeconds(10));
+        var retrievedValue = await db.StringGetAsync(testKey);
+        await db.KeyDeleteAsync(testKey);
+
+        stopwatch.Stop();
+
+        return Results.Ok(new
+        {
+            Status = "Redis is operational",
+            ConnectionString = MaskPassword(connectionString),
+            PingTimeMs = pingResult.TotalMilliseconds,
+            TotalResponseTimeMs = stopwatch.ElapsedMilliseconds,
+            IsConnected = redisConnection.IsConnected,
+            Endpoints = redisConnection.GetEndPoints().Select(e => e.ToString()),
+            DatabaseSize = await db.ExecuteAsync("DBSIZE"),
+            Timestamp = DateTime.UtcNow
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"Failed to connect to Redis: {ex.Message}");
+    }
+});
+
+// Helper method to mask password in connection string
+string MaskPassword(string connectionString)
+{
+    try
+    {
+        var options = ConfigurationOptions.Parse(connectionString);
+        if (!string.IsNullOrEmpty(options.Password))
+        {
+            options.Password = "***MASKED***";
+        }
+        return options.ToString();
+    }
+    catch
+    {
+        // If parsing fails, just mask any obvious password patterns
+        var masked = System.Text.RegularExpressions.Regex.Replace(
+            connectionString,
+            @"password=[^,;]+",
+            "password=***MASKED***",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        return masked;
+    }
+}
+
 #endregion
 
 app.Run();
