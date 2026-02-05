@@ -35,6 +35,8 @@ spec:
               value: "Production"
             - name: ConnectionStrings__DefaultConnection
               value: "Server=sqlserver-service,1433;Database=ProjectDB;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+            - name: Redis__ConnectionString
+              value: "redis-service.redis.svc.cluster.local:6379,password=yourpassword,abortConnect=false,connectTimeout=10000,syncTimeout=10000,allowAdmin=true"
             - name: Keycloak__auth-server-url
               value: "http://keycloak.local/"
             - name: Keycloak__realm
