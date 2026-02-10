@@ -1,11 +1,10 @@
 ﻿using Confluent.Kafka;
-using Confluent.Kafka.Admin;
 
 using IntegratedAPI.Auth;
-using IntegratedAPI.Background_Services;
 using IntegratedAPI.Contexts;
 using IntegratedAPI.Exceptions;
 using IntegratedAPI.Models.DTOs;
+using IntegratedAPI.Services;
 
 using Keycloak.AuthServices.Authentication;
 using Keycloak.AuthServices.Authorization;
@@ -13,19 +12,21 @@ using Keycloak.AuthServices.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Options;
+
 
 using Prometheus;
 
 using Serilog;
 using Serilog.Formatting.Elasticsearch;
-using Serilog.Sinks.Elasticsearch;
 
 using StackExchange.Redis;
 
 using System.Diagnostics;
 using System.Security.Claims;
+
+using VaultSharp;
+using VaultSharp.V1.AuthMethods;
+using VaultSharp.V1.AuthMethods.AppRole;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -67,9 +68,9 @@ builder.Services.AddHealthChecks()
         tags: new[] { "database", "efcore" }
     );
 
-// .NET 10 ENHANCEMENT: Improved CORS with named policy
 
-// CORS
+#region 🌐 + 🚪 CORS Section
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngularApp", policy =>
@@ -80,7 +81,10 @@ builder.Services.AddCors(options =>
     });
 });
 
-// .NET 10: Service diagnostics (optional but useful)
+#endregion
+
+#region 📝 + 🔍 Logging Section
+
 builder.Services.AddLogging(logging =>
 {
     logging.AddConsole();
@@ -89,12 +93,11 @@ builder.Services.AddLogging(logging =>
 
 ConfigureLogs();
 
-
-
 builder.Host.UseSerilog();
 
+#endregion
 
-//🔑 + 🛡️ Keycloak Section
+#region 🔑 + 🛡️ Keycloak Section
 
 builder.Services.AddScoped<KeycloakAuthorizationFilter>();
 builder.Services.AddKeycloakWebApiAuthentication(builder.Configuration);// 🔑 Configure Keycloak Authentication (uses appsettings.json)
@@ -140,6 +143,9 @@ builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSch
     };
 });
 
+#endregion
+
+
 //For resolving IhttpClientFactory
 builder.Services.AddHttpClient();
 
@@ -148,6 +154,7 @@ builder.Services.AddExceptionHandler<ProductExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 
+#region 📨 + 🪶 Kafka Section
 
 // Kafka Producer
 builder.Services.AddSingleton<IProducer<string, string>>(sp =>
@@ -177,9 +184,9 @@ builder.Services.AddSingleton<IConsumer<string, string>>(sp =>
 //Kafka background service
 //builder.Services.AddHostedService<KafkaMonitor>();
 
+#endregion
 
-
-// Redis Configuration
+#region 🗃️ + ⚡ Redis Section
 var redisConnectionString = builder.Configuration["Redis:ConnectionString"];
 if (!string.IsNullOrEmpty(redisConnectionString))
 {
@@ -213,6 +220,36 @@ else
     Console.WriteLine("Redis connection string not found, using in-memory cache");
     builder.Services.AddDistributedMemoryCache();
 }
+
+builder.Services.AddScoped<ICacheManagerService, CacheManagerService>();
+
+#endregion
+
+#region 🔐 + 🗄️ Vault Section
+
+var vaultUri = builder.Configuration["Vault:Uri"];
+var roleId = builder.Configuration["Vault:RoleId"];
+var secretId = builder.Configuration["Vault:SecretId"];
+
+IAuthMethodInfo authMethod = new AppRoleAuthMethodInfo(roleId, secretId);
+
+var config = builder.Configuration;
+var vaultClientSettings = new VaultClientSettings(config["Vault:Uri"]!, authMethod)
+{
+    PostProcessHttpClientHandlerAction = handler =>
+    {
+        if (handler is HttpClientHandler httpClientHandler)
+        {
+            httpClientHandler.ServerCertificateCustomValidationCallback =
+                (message, cert, chain, sslPolicyErrors) => true;
+        }
+    }
+};
+
+builder.Services.AddSingleton<IVaultClient>(new VaultClient(vaultClientSettings));
+builder.Services.AddScoped<IVaultService, VaultService>();
+
+#endregion
 
 var app = builder.Build();
 

@@ -109,7 +109,7 @@ spec:
           value: kong
 ---
 # ------------------------------------------------------------
-# Kong Deployment
+# Kong Deployment (HTTP ONLY)
 # ------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
@@ -141,34 +141,33 @@ spec:
         - name: KONG_PG_DATABASE
           value: kong
 
-        # Proxy
+        # 🔴 HTTP ONLY: Remove SSL from proxy
         - name: KONG_PROXY_LISTEN
-          value: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+          value: "0.0.0.0:8000"
 
-        # Admin
+        # Admin (unchanged)
         - name: KONG_ADMIN_LISTEN
           value: "0.0.0.0:8001"
 
-        # Manager UI
+        # Manager UI - Change URLs to HTTP
         - name: KONG_ADMIN_GUI_LISTEN
           value: "0.0.0.0:8002"
         - name: KONG_ADMIN_GUI_URL
-          value: "https://kong-ui.local"
+          value: "http://kong-ui.local"
         - name: KONG_ADMIN_GUI_API_URL
-          value: "https://kong-admin.local"
+          value: "http://kong-admin.local"
 
         ports:
         - containerPort: 8000
-          hostPort: 80        # <--- binds HTTP to host port 80
-        - containerPort: 8443
-          hostPort: 443       # <--- binds HTTPS to host port 443
+          name: http-proxy
         - containerPort: 8001
-          hostPort: 8001
+          name: admin
         - containerPort: 8002
-          hostPort: 8002
+          name: manager
+        # Removed: hostPort bindings as they're not needed for HTTP-only
 ---
 # ------------------------------------------------------------
-# Kong Proxy Service
+# Kong Proxy Service (HTTP ONLY)
 # ------------------------------------------------------------
 apiVersion: v1
 kind: Service
@@ -182,12 +181,10 @@ spec:
   - name: http
     port: 80
     targetPort: 8000
-  - name: https
-    port: 443
-    targetPort: 8443
+  # 🔴 Removed: HTTPS port since we're HTTP-only
 ---
 # ------------------------------------------------------------
-# Kong Admin Service
+# Kong Admin Service (unchanged)
 # ------------------------------------------------------------
 apiVersion: v1
 kind: Service
@@ -202,7 +199,7 @@ spec:
     targetPort: 8001
 ---
 # ------------------------------------------------------------
-# Kong Manager Service
+# Kong Manager Service (unchanged)
 # ------------------------------------------------------------
 apiVersion: v1
 kind: Service
@@ -217,7 +214,7 @@ spec:
     targetPort: 8002
 ---
 # ------------------------------------------------------------
-# Ingress: Kong Proxy (DATA PLANE)
+# Ingress: Kong Proxy (DATA PLANE) - HTTP ONLY
 # ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -225,14 +222,11 @@ metadata:
   name: kong-proxy-ingress
   namespace: kong
   annotations:
-    cert-manager.io/cluster-issuer: local-ca-cluster-issuer
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # 🔴 Removed: cert-manager annotations for HTTP-only
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
-  tls:
-  - hosts:
-    - kong-proxy.local
-    secretName: kong-proxy-tls
+  # 🔴 Removed: TLS section for HTTP-only
   rules:
   - host: kong-proxy.local
     http:
@@ -246,7 +240,7 @@ spec:
               number: 80
 ---
 # ------------------------------------------------------------
-# Ingress: Kong Admin API (CONTROL PLANE)
+# Ingress: Kong Admin API (CONTROL PLANE) - HTTP ONLY
 # ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -254,14 +248,11 @@ metadata:
   name: kong-admin-ingress
   namespace: kong
   annotations:
-    cert-manager.io/cluster-issuer: local-ca-cluster-issuer
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # 🔴 Removed: cert-manager annotations for HTTP-only
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
-  tls:
-  - hosts:
-    - kong-admin.local
-    secretName: kong-admin-tls
+  # 🔴 Removed: TLS section for HTTP-only
   rules:
   - host: kong-admin.local
     http:
@@ -275,7 +266,7 @@ spec:
               number: 8001
 ---
 # ------------------------------------------------------------
-# Ingress: Kong Manager UI
+# Ingress: Kong Manager UI - HTTP ONLY
 # ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -283,14 +274,11 @@ metadata:
   name: kong-ui-ingress
   namespace: kong
   annotations:
-    cert-manager.io/cluster-issuer: local-ca-cluster-issuer
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # 🔴 Removed: cert-manager annotations for HTTP-only
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
-  tls:
-  - hosts:
-    - kong-ui.local
-    secretName: kong-ui-tls
+  # 🔴 Removed: TLS section for HTTP-only
   rules:
   - host: kong-ui.local
     http:

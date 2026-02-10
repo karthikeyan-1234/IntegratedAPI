@@ -2,10 +2,13 @@
 
 using IntegratedAPI.Auth;
 using IntegratedAPI.Contexts;
+using IntegratedAPI.DTOs;
 using IntegratedAPI.Exceptions;
 using IntegratedAPI.Models;
 using IntegratedAPI.Models.DTOs;
+using IntegratedAPI.Services;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +19,7 @@ namespace IntegratedAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [AllowAnonymous]
     [Resource("Products")]
     public class ProductController : ControllerBase
     {
@@ -23,22 +27,36 @@ namespace IntegratedAPI.Controllers
         private readonly ILogger<ProductController> _logger;
         private readonly ProjectDbContext _projectDbContext;
         private readonly IProducer<string, string> _producer;
+        private readonly ICacheManagerService _cache;
 
-        public ProductController(ILogger<ProductController> logger, ProjectDbContext projectDbContext, IProducer<string,string> producer)
+        public ProductController(ILogger<ProductController> logger, ProjectDbContext projectDbContext, IProducer<string,string> producer,ICacheManagerService cache)
         {
             _logger = logger;
             _projectDbContext = projectDbContext;
             _producer = producer;
+            _cache = cache;
         }
 
         [HttpGet("GetProductsAsync")]
         [Permission("read")]
         public async Task<IActionResult> GetProductsAsync()
         {
+
+            var cachedProducts = await _cache.GetAsync<IEnumerable<product>>(CacheKeys.Products);
+
+            if (cachedProducts != null)
+            {
+                _logger.LogInformation("Returning cached products");
+                return Ok(cachedProducts);
+            }
+
             var products = await _projectDbContext.Products.ToListAsync();
 
-            if(products.Any())
+            if (products.Any())
+            {
+                await _cache.SetAsync(CacheKeys.Products, products, TimeSpan.FromMinutes(30));  // Cache for 30 minutes
                 return Ok(products);
+            }
             else
                 throw new NoProductsException("GetProductAsync method failed");
         }

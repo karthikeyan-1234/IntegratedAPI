@@ -14,6 +14,7 @@
     <Compile Remove="Guides\**" />
     <Compile Remove="Prometheus-Grafana-Local\**" />
     <Compile Remove="Prometheus-Grafana\**" />
+    <Compile Remove="Redis\**" />
     <Compile Remove="YMLs\**" />
     <Content Remove="certs\**" />
     <Content Remove="elk-dotnet-setup\**" />
@@ -21,6 +22,7 @@
     <Content Remove="Guides\**" />
     <Content Remove="Prometheus-Grafana-Local\**" />
     <Content Remove="Prometheus-Grafana\**" />
+    <Content Remove="Redis\**" />
     <Content Remove="YMLs\**" />
     <EmbeddedResource Remove="certs\**" />
     <EmbeddedResource Remove="elk-dotnet-setup\**" />
@@ -28,6 +30,7 @@
     <EmbeddedResource Remove="Guides\**" />
     <EmbeddedResource Remove="Prometheus-Grafana-Local\**" />
     <EmbeddedResource Remove="Prometheus-Grafana\**" />
+    <EmbeddedResource Remove="Redis\**" />
     <EmbeddedResource Remove="YMLs\**" />
     <None Remove="certs\**" />
     <None Remove="elk-dotnet-setup\**" />
@@ -35,6 +38,7 @@
     <None Remove="Guides\**" />
     <None Remove="Prometheus-Grafana-Local\**" />
     <None Remove="Prometheus-Grafana\**" />
+    <None Remove="Redis\**" />
     <None Remove="YMLs\**" />
   </ItemGroup>
 
@@ -90,6 +94,7 @@
 
     <PackageReference Include="Stripe.net" Version="49.0.0" />
     <PackageReference Include="Confluent.Kafka" Version="2.11.1" />
+    <PackageReference Include="VaultSharp" Version="1.17.5.1" />
   </ItemGroup>
 
   <ItemGroup>

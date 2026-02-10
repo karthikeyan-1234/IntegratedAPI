@@ -1,6 +1,7 @@
 ﻿using Confluent.Kafka;
 
 using IntegratedAPI.Models.DTOs;
+using IntegratedAPI.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using StackExchange.Redis;
 
 using System.Diagnostics;
+
+using VaultSharp;
 
 namespace IntegratedAPI.Controllers
 {
@@ -18,11 +21,35 @@ namespace IntegratedAPI.Controllers
     {
         private readonly IConfiguration _config;
         private readonly IConnectionMultiplexer _redisConnection;
+        private readonly IVaultService _vaultService;
 
-        public DiagnosticsController(IConfiguration config, IConnectionMultiplexer redisConnection)
+        public DiagnosticsController(IConfiguration config, IConnectionMultiplexer redisConnection, IVaultService vaultService)
         {
             _config = config;
             _redisConnection = redisConnection;
+            _vaultService = vaultService;
+        }
+
+        [HttpGet("connection/{tenant}")]
+        public async Task<IActionResult> GetConnectionString(string tenant)
+        {
+            try
+            {
+                // KV-v2: path is tenant name, mountPoint is "tenants"
+
+                var tenantInfo = await _vaultService.GetConnectionString(tenant);
+
+                return Ok(new
+                {
+                    Tenant = tenant,
+                    Data = tenantInfo,
+                    Timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                return Problem($"Vault Error: {ex.Message}");
+            }
         }
 
         [HttpGet("redis/simple")]
