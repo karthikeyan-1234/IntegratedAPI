@@ -28,19 +28,22 @@ namespace IntegratedAPI.Controllers
         private readonly ProjectDbContext _projectDbContext;
         private readonly IProducer<string, string> _producer;
         private readonly ICacheManagerService _cache;
+        private readonly HttpContext _httpContext;
 
-        public ProductController(ILogger<ProductController> logger, ProjectDbContext projectDbContext, IProducer<string,string> producer,ICacheManagerService cache)
+        public ProductController(ILogger<ProductController> logger, ProjectDbContext projectDbContext, IProducer<string,string> producer,ICacheManagerService cache, IHttpContextAccessor httpContextAccessor)
         {
             _logger = logger;
             _projectDbContext = projectDbContext;
             _producer = producer;
             _cache = cache;
+            _httpContext = httpContextAccessor.HttpContext!;
         }
 
         [HttpGet("GetProductsAsync")]
         [Permission("read")]
         public async Task<IActionResult> GetProductsAsync()
         {
+            var tenant = _httpContext.Items["group"];
 
             var cachedProducts = await _cache.GetAsync<IEnumerable<product>>(CacheKeys.Products);
 

@@ -113,7 +113,6 @@ builder.Services.AddKeycloakAuthorization(builder.Configuration);// 🛡️ Conf
 //For resolving IhttpClientFactory
 builder.Services.AddHttpClient();
 
-
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantResolver, KeycloakTenantResolver>();
 builder.Services.AddScoped<ITenantConnectionStringProvider, TenantConnectionStringProvider>();

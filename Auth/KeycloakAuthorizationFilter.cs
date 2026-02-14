@@ -80,9 +80,7 @@ namespace IntegratedAPI.Auth
 
             var accessToken = authHeader.Substring("Bearer ".Length);
 
-            var user = _httpContext.User;
-
-            _httpContext.Items["tenant"] = GetRealmFromToken(accessToken);
+            var user = _httpContext.User; //✅ Ensure that in Keycloak, for api-app, a mapper for audience exists for this to work.
 
             foreach (var permission in permissions)
             {
@@ -91,6 +89,7 @@ namespace IntegratedAPI.Auth
                     _logger.LogInformation("Access granted for {Resource}#{Permission}", resource, permission);
 
                     _httpContext.Items["tenant"] = GetRealmFromToken(accessToken);
+                    _httpContext.Items["group"] = _httpContext.Items["tenant"];
 
                     return;
                 }
@@ -146,7 +145,7 @@ namespace IntegratedAPI.Auth
 
             var handler = new JwtSecurityTokenHandler();
             var token = handler.ReadJwtToken(Token);
-            return token.Claims.FirstOrDefault(c => c.Type == "realm")?.Value;
+            return token.Claims.FirstOrDefault(c => c.Type == "Groups")?.Value;
         }
     }
 }
