@@ -19,7 +19,7 @@ namespace IntegratedAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [AllowAnonymous]
+    
     [Resource("Products")]
     public class ProductController : ControllerBase
     {

@@ -3,8 +3,10 @@
 using IntegratedAPI.Auth;
 using IntegratedAPI.Contexts;
 using IntegratedAPI.Exceptions;
+using IntegratedAPI.Middlewares;
 using IntegratedAPI.Models.DTOs;
 using IntegratedAPI.Services;
+using IntegratedAPI.Tenant_Management;
 
 using Keycloak.AuthServices.Authentication;
 using Keycloak.AuthServices.Authorization;
@@ -12,7 +14,7 @@ using Keycloak.AuthServices.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-
+using Microsoft.IdentityModel.JsonWebTokens;
 
 using Prometheus;
 
@@ -22,7 +24,9 @@ using Serilog.Formatting.Elasticsearch;
 using StackExchange.Redis;
 
 using System.Diagnostics;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
 
 using VaultSharp;
 using VaultSharp.V1.AuthMethods;
@@ -103,52 +107,16 @@ builder.Services.AddScoped<KeycloakAuthorizationFilter>();
 builder.Services.AddKeycloakWebApiAuthentication(builder.Configuration);// 🔑 Configure Keycloak Authentication (uses appsettings.json)
 builder.Services.AddKeycloakAuthorization(builder.Configuration);// 🛡️ Configure Keycloak Authorization Services
 
-
-// ⚠️ NECESSARY CUSTOM LOGIC: Fix HTTPS requirement and add custom token validation
-builder.Services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
-{
-    // CRITICAL: Disable HTTPS requirement for development
-    options.RequireHttpsMetadata = false;
-
-    // Required for multiple audience support
-    options.TokenValidationParameters.ValidAudiences = new[] { "api-app", "angular-app", "master-realm", "account" };
-    options.TokenValidationParameters.RoleClaimType = ClaimTypes.Role;
-
-    // Required for custom azp validation and role extraction
-    options.Events = new JwtBearerEvents
-    {
-
-        OnTokenValidated = ctx =>
-        {
-            // Reject if token doesn't contain UMA "authorization.permissions"
-            var hasRpt = ctx.Principal?.Claims.Any(c => c.Type == "authorization") ?? false;
-            if (!hasRpt)
-            {
-                ctx.Fail("RPT (UMA token) required.");
-            }
-            return Task.CompletedTask;
-        },
-
-        OnAuthenticationFailed = context =>
-        {
-            Console.WriteLine("Authentication failed: " + context.Exception.Message);
-            return Task.CompletedTask;
-        },
-
-        OnChallenge = context =>
-        {
-            Console.WriteLine("OnChallenge: " + context.Error + " - " + context.ErrorDescription);
-            return Task.CompletedTask;
-        }
-    };
-});
-
 #endregion
 
 
 //For resolving IhttpClientFactory
 builder.Services.AddHttpClient();
 
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantResolver, KeycloakTenantResolver>();
+builder.Services.AddScoped<ITenantConnectionStringProvider, TenantConnectionStringProvider>();
 
 builder.Services.AddExceptionHandler<ProductExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -303,6 +271,8 @@ app.UseRouting();
 app.UseCors("AllowAngularApp");
 app.UseAuthentication();
 app.UseAuthorization();
+
+//app.UseTenantResolution();
 
 // .NET 10: Endpoint routing with improved performance
 app.MapControllers();

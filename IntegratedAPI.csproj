@@ -15,6 +15,7 @@
     <Compile Remove="Prometheus-Grafana-Local\**" />
     <Compile Remove="Prometheus-Grafana\**" />
     <Compile Remove="Redis\**" />
+    <Compile Remove="vault-enterprise\**" />
     <Compile Remove="YMLs\**" />
     <Content Remove="certs\**" />
     <Content Remove="elk-dotnet-setup\**" />
@@ -23,6 +24,7 @@
     <Content Remove="Prometheus-Grafana-Local\**" />
     <Content Remove="Prometheus-Grafana\**" />
     <Content Remove="Redis\**" />
+    <Content Remove="vault-enterprise\**" />
     <Content Remove="YMLs\**" />
     <EmbeddedResource Remove="certs\**" />
     <EmbeddedResource Remove="elk-dotnet-setup\**" />
@@ -31,6 +33,7 @@
     <EmbeddedResource Remove="Prometheus-Grafana-Local\**" />
     <EmbeddedResource Remove="Prometheus-Grafana\**" />
     <EmbeddedResource Remove="Redis\**" />
+    <EmbeddedResource Remove="vault-enterprise\**" />
     <EmbeddedResource Remove="YMLs\**" />
     <None Remove="certs\**" />
     <None Remove="elk-dotnet-setup\**" />
@@ -39,10 +42,12 @@
     <None Remove="Prometheus-Grafana-Local\**" />
     <None Remove="Prometheus-Grafana\**" />
     <None Remove="Redis\**" />
+    <None Remove="vault-enterprise\**" />
     <None Remove="YMLs\**" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove=".gitignore" />
     <None Remove="CI - CD Setup Guide - .NET 8 Web API with Jenkins and Kubernetes.html" />
     <None Remove="Dockerfile" />
     <None Remove="ELK Setup Guide.html" />

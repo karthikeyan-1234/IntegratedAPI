@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 
+using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 
 namespace IntegratedAPI.Auth
@@ -30,6 +31,7 @@ namespace IntegratedAPI.Auth
             _authServerUrl = keycloakSection.GetValue<string>("auth-server-url");
             _resource = keycloakSection.GetValue<string>("resource");
             _secret = keycloakSection.GetSection("credentials").GetValue<string>("secret");
+
         }
 
         public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
@@ -39,6 +41,8 @@ namespace IntegratedAPI.Auth
                 _logger.LogDebug("Action descriptor is not a ControllerActionDescriptor, skipping.");
                 return;
             }
+
+            var _httpContext = context.HttpContext;
 
             var methodMetadata = controllerActionDescriptor.MethodInfo.GetCustomAttributes(true);
             var controllerMetadata = controllerActionDescriptor.ControllerTypeInfo.GetCustomAttributes(true);
@@ -76,11 +80,18 @@ namespace IntegratedAPI.Auth
 
             var accessToken = authHeader.Substring("Bearer ".Length);
 
+            var user = _httpContext.User;
+
+            _httpContext.Items["tenant"] = GetRealmFromToken(accessToken);
+
             foreach (var permission in permissions)
             {
                 if (await CheckPermissionAsync(accessToken, resource, permission))
                 {
                     _logger.LogInformation("Access granted for {Resource}#{Permission}", resource, permission);
+
+                    _httpContext.Items["tenant"] = GetRealmFromToken(accessToken);
+
                     return;
                 }
             }
@@ -125,6 +136,17 @@ namespace IntegratedAPI.Auth
                 _logger.LogError(ex, "Fatal error contacting Keycloak for permission check. Check connectivity.");
                 return false;
             }
+        }
+    
+    
+        private string? GetRealmFromToken(string Token)
+        {
+            if (string.IsNullOrEmpty(Token))
+                return null;
+
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(Token);
+            return token.Claims.FirstOrDefault(c => c.Type == "realm")?.Value;
         }
     }
 }
