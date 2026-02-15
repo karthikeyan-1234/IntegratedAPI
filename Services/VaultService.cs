@@ -15,15 +15,15 @@ namespace IntegratedAPI.Services
             _logger = logger;
         }
 
-        public async Task<object?> GetConnectionString(string tenant)
+        public async Task<string?> GetConnectionString(string tenant)
         {
             // KV-v2: path is tenant name, mountPoint is "tenants"
             var secret = await _vaultClient.V1.Secrets.KeyValue.V2
                 .ReadSecretAsync(path: tenant.ToUpper(), mountPoint: "tenants");
 
-            if (secret.Data.Data.TryGetValue("connectionString", out var connString))
+            if (secret.Data.Data.TryGetValue("connectionString", out var connStringObj))
             {
-                return connString!;
+                return connStringObj.ToString()!;
             }
 
             return null;

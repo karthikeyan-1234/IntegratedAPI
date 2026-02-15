@@ -2,6 +2,6 @@
 {
     public interface IVaultService
     {
-        Task<object?> GetConnectionString(string tenant);
+        Task<string?> GetConnectionString(string tenant);
     }
 }

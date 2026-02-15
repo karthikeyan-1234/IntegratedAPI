@@ -3,7 +3,6 @@
 using IntegratedAPI.Auth;
 using IntegratedAPI.Contexts;
 using IntegratedAPI.Exceptions;
-using IntegratedAPI.Middlewares;
 using IntegratedAPI.Models.DTOs;
 using IntegratedAPI.Services;
 using IntegratedAPI.Tenant_Management;
@@ -114,7 +113,6 @@ builder.Services.AddKeycloakAuthorization(builder.Configuration);// 🛡️ Conf
 builder.Services.AddHttpClient();
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ITenantResolver, KeycloakTenantResolver>();
 builder.Services.AddScoped<ITenantConnectionStringProvider, TenantConnectionStringProvider>();
 
 builder.Services.AddExceptionHandler<ProductExceptionHandler>();

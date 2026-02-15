@@ -45,13 +45,13 @@ namespace IntegratedAPI.Controllers
         {
             var tenant = _httpContext.Items["group"];
 
-            var cachedProducts = await _cache.GetAsync<IEnumerable<product>>(CacheKeys.Products);
+            //var cachedProducts = await _cache.GetAsync<IEnumerable<product>>(CacheKeys.Products);
 
-            if (cachedProducts != null)
-            {
-                _logger.LogInformation("Returning cached products");
-                return Ok(cachedProducts);
-            }
+            //if (cachedProducts != null)
+            //{
+            //    _logger.LogInformation("Returning cached products");
+            //    return Ok(cachedProducts);
+            //}
 
             var products = await _projectDbContext.Products.ToListAsync();
 

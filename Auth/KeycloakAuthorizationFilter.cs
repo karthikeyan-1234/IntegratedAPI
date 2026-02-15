@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 
 namespace IntegratedAPI.Auth
 {
@@ -88,8 +89,19 @@ namespace IntegratedAPI.Auth
                 {
                     _logger.LogInformation("Access granted for {Resource}#{Permission}", resource, permission);
 
-                    _httpContext.Items["tenant"] = GetRealmFromToken(accessToken);
-                    _httpContext.Items["group"] = _httpContext.Items["tenant"];
+                    var tenant = GetGroupFromToken(accessToken)!;
+                    _httpContext.Items["tenant"] = tenant;
+                    _httpContext.Items["group"] = tenant;
+
+                    // ✅ ADD "Groups" claim to HttpContext.User
+                    var claims = new List<Claim>
+                        {
+                            new Claim("Groups", tenant),  // Maps to HttpContext.User.FindFirst("Groups")
+                            new Claim("Tenant", tenant)
+                        };
+
+                    var appIdentity = new ClaimsIdentity(claims, user.Identity?.AuthenticationType);
+                    _httpContext.User.AddIdentity(appIdentity);  // ✅ Merges into current principal
 
                     return;
                 }
@@ -138,7 +150,7 @@ namespace IntegratedAPI.Auth
         }
     
     
-        private string? GetRealmFromToken(string Token)
+        private string? GetGroupFromToken(string Token)
         {
             if (string.IsNullOrEmpty(Token))
                 return null;

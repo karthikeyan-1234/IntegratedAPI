@@ -2,6 +2,6 @@
 {
     public interface ITenantConnectionStringProvider
     {
-        Task<string?> GetConnectionStringAsync(string tenantId);
+        Task<string> GetConnectionString();
     }
 }
