@@ -90,6 +90,13 @@ namespace IntegratedAPI.Auth
                     _logger.LogInformation("Access granted for {Resource}#{Permission}", resource, permission);
 
                     var tenant = GetGroupFromToken(accessToken)!;
+
+                    if(tenant is null)
+                    {
+                        context.Result = new UnauthorizedResult();
+                        return;
+                    }
+
                     _httpContext.Items["tenant"] = tenant;
                     _httpContext.Items["group"] = tenant;
 
@@ -157,7 +164,9 @@ namespace IntegratedAPI.Auth
 
             var handler = new JwtSecurityTokenHandler();
             var token = handler.ReadJwtToken(Token);
-            return token.Claims.FirstOrDefault(c => c.Type == "Groups")?.Value;
+            var group = token.Claims.FirstOrDefault(c => c.Type == "Groups")?.Value;
+
+            return group;
         }
     }
 }

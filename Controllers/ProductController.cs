@@ -25,15 +25,15 @@ namespace IntegratedAPI.Controllers
     {
 
         private readonly ILogger<ProductController> _logger;
-        private readonly ProjectDbContext _projectDbContext;
+        private readonly TenantDbContextFactory _dbFactory;
         private readonly IProducer<string, string> _producer;
         private readonly ICacheManagerService _cache;
         private readonly HttpContext _httpContext;
 
-        public ProductController(ILogger<ProductController> logger, ProjectDbContext projectDbContext, IProducer<string,string> producer,ICacheManagerService cache, IHttpContextAccessor httpContextAccessor)
+        public ProductController(ILogger<ProductController> logger, IProducer<string,string> producer,ICacheManagerService cache, IHttpContextAccessor httpContextAccessor, TenantDbContextFactory dbFactory)
         {
             _logger = logger;
-            _projectDbContext = projectDbContext;
+            _dbFactory = dbFactory;
             _producer = producer;
             _cache = cache;
             _httpContext = httpContextAccessor.HttpContext!;
@@ -44,6 +44,8 @@ namespace IntegratedAPI.Controllers
         public async Task<IActionResult> GetProductsAsync()
         {
             var tenant = _httpContext.Items["group"];
+
+            ProjectDbContext _projectDbContext = await _dbFactory.CreateAsync();
 
             //var cachedProducts = await _cache.GetAsync<IEnumerable<product>>(CacheKeys.Products);
 
@@ -77,6 +79,8 @@ namespace IntegratedAPI.Controllers
                 description = product.description
             };
 
+            ProjectDbContext _projectDbContext = await _dbFactory.CreateAsync();
+
 
             var newProductInfo = _projectDbContext.Products.Add(newProduct1).Entity;
             await _projectDbContext.SaveChangesAsync();
@@ -89,6 +93,8 @@ namespace IntegratedAPI.Controllers
         [HttpPut("UpdateProductAsync")]
         public async Task<IActionResult> UpdateProductAsync([FromBody] product updatedProduct)
         {
+            ProjectDbContext _projectDbContext = await _dbFactory.CreateAsync();
+
             var existingProduct = await _projectDbContext.Products.FindAsync(updatedProduct.id);
             if (existingProduct == null)
             {
@@ -107,6 +113,8 @@ namespace IntegratedAPI.Controllers
         [Permission("delete")]
         public async Task<IActionResult> DeleteProductAsync(int productId)
         {
+            ProjectDbContext _projectDbContext = await _dbFactory.CreateAsync();
+
             if (_projectDbContext.Products.Any())
             {
                 var existingProduct = await _projectDbContext.Products.FindAsync(productId);

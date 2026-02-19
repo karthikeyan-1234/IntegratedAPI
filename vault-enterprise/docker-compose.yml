@@ -4,13 +4,12 @@ services:
     container_name: vault-enterprise
     ports:
       - "8200:8200"
-      - "8201:8201"
     volumes:
-      - ./config:/vault/config:ro
+      - ./config:/vault/config
       - ./data:/vault/data
       - ./logs:/vault/logs
       - ./tls:/vault/tls:ro
     cap_add:
       - IPC_LOCK
-    command: vault server -config=/vault/config/vault.hcl
-    restart: always
+    entrypoint: sh
+    command: -c "vault server -config=/vault/config/vault.hcl"

@@ -7,219 +7,406 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #1976d2;
-            --primary-dark: #1565c0;
-            --primary-light: #e3f2fd;
-            --secondary: #dc004e;
-            --success: #4caf50;
-            --warning: #ff9800;
-            --danger: #f44336;
-            --light: #f5f5f5;
-            --dark: #212121;
-            --gray: #757575;
-            --border: #e0e0e0;
-            --shadow: 0 2px 15px rgba(0,0,0,0.08);
-            --radius: 8px;
-            --transition: all 0.3s ease;
-            --sidebar-width: 280px;
+            --primary: #1976d2; --primary-dark: #1565c0; --primary-light: #e3f2fd;
+            --success: #4caf50; --warning: #ff9800; --danger: #f44336;
+            --light: #f5f5f5; --dark: #212121; --border: #e0e0e0;
+            --shadow: 0 2px 15px rgba(0,0,0,0.08); --radius: 8px;
+            --transition: all 0.3s ease; --sidebar-width: 280px;
         }
-        
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: var(--dark);
-            display: flex;
-            min-height: 100vh;
-            background: #f8f9fa;
-        }
-        
-        .sidebar {
-            width: var(--sidebar-width);
-            background: linear-gradient(180deg, var(--primary-dark) 0%, var(--primary) 100%);
-            color: white;
-            padding: 20px 0;
-            position: fixed;
-            height: 100vh;
-            overflow-y: auto;
-            z-index: 1000;
-        }
-        
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: var(--dark); display: flex; min-height: 100vh; background: #f8f9fa; }
+        .sidebar { width: var(--sidebar-width); background: linear-gradient(180deg, var(--primary-dark) 0%, var(--primary) 100%); color: white; padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; z-index: 1000; }
         .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
         .sidebar-header h2 { font-size: 1.5rem; margin-bottom: 5px; }
-        
+        .sidebar-header .version { font-size: 0.8rem; opacity: 0.7; }
         .nav-section { margin: 25px 0; padding: 0 20px; }
         .nav-title { font-size: 0.9rem; text-transform: uppercase; opacity: 0.7; margin-bottom: 15px; font-weight: 600; }
         .nav-list { list-style: none; }
-        .nav-link { 
-            display: flex; align-items: center; gap: 10px; padding: 10px 15px; 
-            color: white; text-decoration: none; border-radius: 6px; 
-            transition: var(--transition); font-size: 0.95rem; 
-        }
+        .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 15px; color: white; text-decoration: none; border-radius: 6px; transition: var(--transition); font-size: 0.95rem; }
         .nav-link:hover { background: rgba(255,255,255,0.1); }
         .nav-link.active { background: rgba(255,255,255,0.2); font-weight: 600; }
-        
         .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 0; }
         .container { max-width: 1100px; margin: 0 auto; padding: 40px; }
-        
         .header { background: white; padding: 40px; margin-bottom: 40px; border-radius: var(--radius); box-shadow: var(--shadow); text-align: center; }
         .header h1 { font-size: 2.5rem; color: var(--primary); margin-bottom: 10px; }
-
+        .header .basepath { display: inline-block; margin-top: 12px; background: #1e1e1e; color: #569cd6; padding: 8px 18px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 0.95rem; }
         .section { background: white; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 40px; overflow: hidden; }
         .section-header { background: linear-gradient(135deg, var(--primary-light) 0%, white 100%); padding: 25px 40px; border-bottom: 1px solid var(--border); }
         .section-header h2 { font-size: 1.6rem; color: var(--primary); display: flex; align-items: center; gap: 15px; }
         .section-content { padding: 30px 40px; }
-
-        .code-block { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: var(--radius); overflow-x: auto; margin: 20px 0; font-family: 'Consolas', monospace; position: relative; }
+        .code-block { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: var(--radius); overflow-x: auto; margin: 20px 0; font-family: 'Consolas', monospace; font-size: 0.9rem; }
         .code-header { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
         .code-filename { color: #569cd6; font-size: 0.85rem; font-weight: bold; }
-        
         .copy-btn { background: #569cd6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
-        
+        .alert { padding: 15px 20px; border-radius: var(--radius); margin: 15px 0; display: flex; gap: 12px; align-items: flex-start; }
+        .alert-warning { background: #fff8e1; border-left: 4px solid var(--warning); }
+        .alert-danger  { background: #fff5f5; border-left: 4px solid var(--danger); }
+        .alert-success { background: #f1f8e9; border-left: 4px solid var(--success); }
+        .alert-info    { background: var(--primary-light); border-left: 4px solid var(--primary); }
+        .alert i { margin-top: 3px; flex-shrink: 0; }
         .strategy { padding: 20px; border-radius: var(--radius); background: var(--light); border-left: 4px solid var(--primary); margin-bottom: 20px; }
         .strategy-tag { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; color: white; margin-left: 10px; vertical-align: middle; }
-        .tag-cmd { background: var(--dark); }
-        .tag-dotnet { background: var(--primary-dark); }
-        .tag-ui { background: var(--warning); }
-
+        .tag-ui { background: var(--warning); color: #333 !important; }
         .troubleshoot { background: #fff5f5; border: 1px solid #feb2b2; padding: 25px; border-radius: var(--radius); }
+        .troubleshoot li { margin-bottom: 14px; }
         .back-to-top { position: fixed; bottom: 30px; right: 30px; width: 45px; height: 45px; background: var(--primary); color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; text-decoration: none; z-index: 100; }
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        p { margin-bottom: 12px; }
+        .comment { color: #6a9955; }
+        .path-highlight { color: #ce9178; }
     </style>
 </head>
 <body>
 
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <h2>Vault Guide</h2>
-            <div class="version">v1.17.5.1 (.NET 9)</div>
-        </div>
-        <nav class="nav-section">
-            <div class="nav-title">Setup Steps</div>
-            <ul class="nav-list">
-                <li class="nav-item"><a href="#docker" class="nav-link active"><i class="fas fa-box"></i> 1. Docker Setup</a></li>
-                <li class="nav-item"><a href="#unseal" class="nav-link"><i class="fas fa-key"></i> 2. Unseal Ceremony</a></li>
-                <li class="nav-item"><a href="#policy" class="nav-link"><i class="fas fa-shield-alt"></i> 3. Policies & Secrets</a></li>
-                <li class="nav-item"><a href="#approle" class="nav-link"><i class="fas fa-user-lock"></i> 4. AppRole Auth</a></li>
-                <li class="nav-item"><a href="#ui" class="nav-link"><i class="fas fa-desktop"></i> 5. Vault UI Management</a></li>
-                <li class="nav-item"><a href="#dotnet" class="nav-link"><i class="fas fa-code"></i> 6. .NET Integration</a></li>
-                <li class="nav-item"><a href="#trouble" class="nav-link"><i class="fas fa-exclamation-triangle"></i> 7. Troubleshooting</a></li>
-            </ul>
-        </nav>
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h2>Vault Guide</h2>
+        <div class="version">v1.17.5.1 (.NET 9)</div>
+    </div>
+    <nav class="nav-section">
+        <div class="nav-title">Setup Steps</div>
+        <ul class="nav-list">
+            <li><a href="#docker"  class="nav-link active"><i class="fas fa-box"></i> 1. Docker Setup</a></li>
+            <li><a href="#init"    class="nav-link"><i class="fas fa-play-circle"></i> 2. First-Time Init</a></li>
+            <li><a href="#unseal"  class="nav-link"><i class="fas fa-key"></i> 3. Unseal Ceremony</a></li>
+            <li><a href="#policy"  class="nav-link"><i class="fas fa-shield-alt"></i> 4. Policies &amp; Secrets</a></li>
+            <li><a href="#approle" class="nav-link"><i class="fas fa-user-lock"></i> 5. AppRole Auth</a></li>
+            <li><a href="#ui"      class="nav-link"><i class="fas fa-desktop"></i> 6. Vault UI</a></li>
+            <li><a href="#dotnet"  class="nav-link"><i class="fas fa-code"></i> 7. .NET Integration</a></li>
+            <li><a href="#trouble" class="nav-link"><i class="fas fa-exclamation-triangle"></i> 8. Troubleshooting</a></li>
+        </ul>
+    </nav>
+</div>
+
+<main class="main-content">
+<div class="container">
+
+    <div class="header">
+        <h1>HashiCorp Vault Enterprise Guide</h1>
+        <p>Reproducible setup for Secure Secrets Management in Docker environments.</p>
+        <div class="basepath">📁 Base path: C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise</div>
     </div>
 
-    <main class="main-content">
-        <div class="container">
-            <div class="header">
-                <h1>HashiCorp Vault Enterprise Guide</h1>
-                <p class="subtitle">Reproducible setup for Secure Secrets Management in Docker environments.</p>
+    <!-- ═══════════ SECTION 1: DOCKER SETUP ═══════════ -->
+    <section id="docker" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-box"></i> Docker Infrastructure</h2>
+        </div>
+        <div class="section-content">
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle" style="color:var(--primary)"></i>
+                <div>All files — <code>docker-compose.yml</code>, <code>vault.hcl</code>, TLS certs, data, and logs — live under:<br>
+                <strong><code>C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise\</code></strong><br>
+                Run all commands from this directory or use the full paths shown below.</div>
             </div>
 
-            <section id="docker" class="section">
-                <div class="section-header">
-                    <h2><i class="fas fa-box"></i> Docker Infrastructure</h2>
-                </div>
-                <div class="section-content">
-                    <p>Ensure your <code>vault.hcl</code> listener points to the TLS files and <code>ui = true</code> is set.</p>
-                    <div class="code-block">
-                        <div class="code-header"><span class="code-filename">docker-compose.yml</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                        <pre>services:
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle" style="color:var(--danger)"></i>
+                <div><strong>Critical: Always override the entrypoint.</strong> The default entrypoint of the <code>hashicorp/vault</code> image mangles the <code>-config</code> flag by stripping the <code>.hcl</code> extension, producing <em>"stat /vault/config/vault: no such file or directory"</em>. Always use <code>--entrypoint sh</code> and pass the full command via <code>-c</code>. The Docker Compose file below already handles this correctly.</div>
+            </div>
+
+            <p>Expected directory structure:</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Directory Structure</span></div>
+                <pre>C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise\
+├── docker-compose.yml
+├── config\
+│   └── vault.hcl
+├── data\           ← Vault storage (never delete)
+├── logs\
+└── tls\
+    ├── vault.crt
+    └── vault.key</pre>
+            </div>
+
+            <p><strong>vault.hcl:</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">config\vault.hcl</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>storage "raft" {
+  path    = "/vault/data"
+  node_id = "node1"
+}
+
+listener "tcp" {
+  address         = "0.0.0.0:8200"
+  tls_cert_file   = "/vault/tls/vault.crt"
+  tls_key_file    = "/vault/tls/vault.key"
+  cluster_address = "0.0.0.0:8201"
+}
+
+api_addr      = "https://127.0.0.1:8200"
+cluster_addr  = "https://127.0.0.1:8201"
+ui            = true
+disable_mlock = true</pre>
+            </div>
+
+            <p><strong>docker-compose.yml</strong> — the preferred way to start Vault:</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">docker-compose.yml</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>services:
   vault:
     image: hashicorp/vault:latest
     container_name: vault-enterprise
-    ports: ["8200:8200"]
+    ports:
+      - "8200:8200"
     volumes:
-      - ./config:/vault/config:ro
+      - ./config:/vault/config
       - ./data:/vault/data
+      - ./logs:/vault/logs
       - ./tls:/vault/tls:ro
-    cap_add: [IPC_LOCK]
-    command: vault server -config=/vault/config/vault.hcl</pre>
-                    </div>
-                </div>
-            </section>
+    cap_add:
+      - IPC_LOCK
+    entrypoint: sh
+    command: -c "vault server -config=/vault/config/vault.hcl"</pre>
+            </div>
 
-            <section id="unseal" class="section">
-                <div class="section-header">
-                    <h2><i class="fas fa-key"></i> Unseal Ceremony</h2>
-                </div>
-                <div class="section-content">
-                    <div class="strategy">
-                        <strong>Frequency:</strong> Only required after a container restart.
-                    </div>
-                    <div class="code-block">
-                        <div class="code-header"><span class="code-filename">PowerShell / CMD</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                        <pre>:: Initialize (Save Unseal Keys and Root Token!)
-docker exec -e VAULT_ADDR='https://127.0.0.1:8200' -e VAULT_SKIP_VERIFY='true' -it vault-enterprise vault operator init
+            <p>Start Vault using Docker Compose (run from the vault-enterprise directory):</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Start with Docker Compose</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>cd C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise
+docker compose up -d</pre>
+            </div>
 
-:: Unseal (Repeat 3 times with different keys)
-docker exec -e VAULT_ADDR='https://127.0.0.1:8200' -e VAULT_SKIP_VERIFY='true' -it vault-enterprise vault operator unseal</pre>
-                    </div>
-                </div>
-            </section>
+            <p>Or using <code>docker run</code> with explicit paths:</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Start with docker run</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>docker run -d `
+  --name vault-enterprise `
+  --cap-add=IPC_LOCK `
+  -p 8200:8200 `
+  -v C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise\config:/vault/config `
+  -v C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise\data:/vault/data `
+  -v C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise\logs:/vault/logs `
+  -v C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise\tls:/vault/tls `
+  --entrypoint sh `
+  hashicorp/vault:latest `
+  -c "vault server -config=/vault/config/vault.hcl"</pre>
+            </div>
 
-            <section id="policy" class="section">
-                <div class="section-header">
-                    <h2><i class="fas fa-shield-alt"></i> Policies & Secrets</h2>
-                </div>
-                <div class="section-content">
-                    <p>Using <strong>CMD</strong> ensures the HCL policy string is parsed correctly.</p>
-                    <div class="code-block">
-                        <div class="code-header"><span class="code-filename">CMD (Command Prompt)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                        <pre>:: Create Policy
-echo path "tenants/data/*" { capabilities = ["read"] } | docker exec -i -e VAULT_ADDR=https://127.0.0.1:8200 -e VAULT_SKIP_VERIFY=true vault-enterprise vault policy write tenant-reader -
+            <p><strong>Generate self-signed TLS certificates</strong> (one-time only, if you don't have them yet):</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Generate TLS Cert</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>docker run --rm `
+  -v C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise\tls:/tls `
+  alpine/openssl req -x509 -nodes -days 365 `
+  -newkey rsa:2048 `
+  -keyout /tls/vault.key `
+  -out /tls/vault.crt `
+  -subj "/CN=vault" `
+  -addext "subjectAltName=IP:127.0.0.1"</pre>
+            </div>
+        </div>
+    </section>
 
-:: Enable KV-V2 and Add Secret
-docker exec -e VAULT_ADDR=https://127.0.0.1:8200 -e VAULT_SKIP_VERIFY=true vault-enterprise vault secrets enable -path=tenants kv-v2
-docker exec -e VAULT_ADDR=https://127.0.0.1:8200 -e VAULT_SKIP_VERIFY=true vault-enterprise vault kv put tenants/WIPRO connectionString="Server=SQL_WIPRO;..."</pre>
-                    </div>
-                </div>
-            </section>
+    <!-- ═══════════ SECTION 2: FIRST-TIME INIT ═══════════ -->
+    <section id="init" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-play-circle"></i> First-Time Initialization</h2>
+        </div>
+        <div class="section-content">
 
-            <section id="approle" class="section">
-                <div class="section-header">
-                    <h2><i class="fas fa-user-lock"></i> AppRole Authentication</h2>
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle" style="color:var(--danger)"></i>
+                <div><strong>One-time only.</strong> Run this exactly once on a fresh <code>data\</code> directory. The 5 unseal keys and root token cannot be recovered if lost. Store them in a password manager before doing anything else.</div>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Initialize Vault (run once only)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>docker exec `
+  -e VAULT_ADDR='https://127.0.0.1:8200' `
+  -e VAULT_SKIP_VERIFY='true' `
+  -it vault-enterprise `
+  vault operator init</pre>
+            </div>
+
+            <p>Output will look like this — <strong>save all 5 keys and the root token</strong>:</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Example Output</span></div>
+                <pre>Unseal Key 1: abc123...
+Unseal Key 2: def456...
+Unseal Key 3: ghi789...
+Unseal Key 4: jkl012...
+Unseal Key 5: mno345...
+
+Initial Root Token: hvs.XXXXXXXXXXXXXXXX</pre>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle" style="color:var(--primary)"></i>
+                <div>Init data is persisted to <code>vault-enterprise\data\</code> via the mounted volume. It survives container removal and recreation. <strong>Never delete the <code>data\</code> folder.</strong></div>
+            </div>
+
+            <p>After init, immediately proceed to the Unseal Ceremony to bring Vault online.</p>
+        </div>
+    </section>
+
+    <!-- ═══════════ SECTION 3: UNSEAL CEREMONY ═══════════ -->
+    <section id="unseal" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-key"></i> Unseal Ceremony</h2>
+        </div>
+        <div class="section-content">
+
+            <div class="strategy">
+                <strong>Frequency:</strong> Required every time the container starts or restarts. Vault always boots sealed — this is by design for security. Your data is safe in <code>data\</code>; you just need to supply 3 of your 5 unseal keys each time.
+            </div>
+
+            <p>Run the unseal command <strong>3 times</strong>, entering a <strong>different key</strong> each time when prompted:</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Unseal (run 3 times with 3 different keys)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>docker exec `
+  -e VAULT_ADDR='https://127.0.0.1:8200' `
+  -e VAULT_SKIP_VERIFY='true' `
+  -it vault-enterprise `
+  vault operator unseal</pre>
+            </div>
+
+            <p>After the 3rd key, Vault reports <code>Sealed: false</code>. Then log in to establish your session token inside the container:</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Login with Root Token</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>docker exec `
+  -e VAULT_ADDR='https://127.0.0.1:8200' `
+  -e VAULT_SKIP_VERIFY='true' `
+  -it vault-enterprise `
+  vault login</pre>
+            </div>
+
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle" style="color:var(--warning)"></i>
+                <div>
+                    <strong>Token persistence caveat:</strong> <code>vault login</code> stores the token inside the running container's filesystem. Subsequent <code>docker exec</code> calls on the same container share this token. However, if you remove and recreate the container, you must run <code>vault login</code> again after unsealing. Alternatively, pass <code>-e VAULT_TOKEN=hvs.XXXX</code> explicitly on every admin <code>docker exec</code> to avoid relying on the stored token.
                 </div>
-                <div class="section-content">
-                    <div class="code-block">
-                        <div class="code-header"><span class="code-filename">CMD</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                        <pre>:: Enable AppRole
+            </div>
+
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle" style="color:var(--success)"></i>
+                <div><strong>Full restart workflow:</strong> <code>docker compose up -d</code> → Unseal ×3 → Login. That's all you need each time Docker Desktop or your machine restarts.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════ SECTION 4: POLICIES & SECRETS ═══════════ -->
+    <section id="policy" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-shield-alt"></i> Policies &amp; Secrets</h2>
+        </div>
+        <div class="section-content">
+
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle" style="color:var(--danger)"></i>
+                <div>
+                    <strong>Do not use PowerShell <code>echo</code> to pipe policy HCL.</strong> PowerShell mangles the double quotes, producing a <em>"failed to parse policy: comment not terminated"</em> error. Use the file-based method below instead, which works reliably from PowerShell.
+                </div>
+            </div>
+
+            <p><strong>Step 1 — Enable the KV-V2 secrets engine:</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Enable KV-V2</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>docker exec `
+  -e VAULT_ADDR=https://127.0.0.1:8200 `
+  -e VAULT_SKIP_VERIFY=true `
+  vault-enterprise `
+  vault secrets enable -path=tenants kv-v2</pre>
+            </div>
+
+            <p><strong>Step 2 — Create the policy using a file</strong> (avoids all quoting issues). Since <code>config\</code> is already mounted inside the container, save the policy file there:</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Write &amp; Apply Policy</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre><span class="comment"># Write policy HCL to the config folder — mounted inside container at /vault/config</span>
+Set-Content `
+  -Path "C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise\config\policy.hcl" `
+  -Value 'path "tenants/data/*" { capabilities = ["read"] }'
+
+<span class="comment"># Apply it — the file is visible inside the container at /vault/config/policy.hcl</span>
+docker exec `
+  -e VAULT_ADDR=https://127.0.0.1:8200 `
+  -e VAULT_SKIP_VERIFY=true `
+  -it vault-enterprise `
+  vault policy write tenant-reader /vault/config/policy.hcl</pre>
+            </div>
+
+            <p><strong>Step 3 — Store a secret:</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Add a Secret</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>docker exec `
+  -e VAULT_ADDR=https://127.0.0.1:8200 `
+  -e VAULT_SKIP_VERIFY=true `
+  vault-enterprise `
+  vault kv put tenants/WIPRO connectionString="Server=SQL_WIPRO;Database=mydb;User Id=sa;Password=secret;"</pre>
+            </div>
+
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle" style="color:var(--primary)"></i>
+                <div>Secrets are stored at path <code>tenants/data/&lt;TENANT_NAME&gt;</code> in KV-V2. Add more tenants by repeating the <code>vault kv put tenants/&lt;NAME&gt;</code> command with different tenant names.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════ SECTION 5: APPROLE ═══════════ -->
+    <section id="approle" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-user-lock"></i> AppRole Authentication</h2>
+        </div>
+        <div class="section-content">
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Enable AppRole &amp; Create Role</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre><span class="comment"># Enable AppRole auth method</span>
 docker exec -e VAULT_ADDR=https://127.0.0.1:8200 -e VAULT_SKIP_VERIFY=true vault-enterprise vault auth enable approle
 
-:: Bind Policy to Role
-docker exec -e VAULT_ADDR=https://127.0.0.1:8200 -e VAULT_SKIP_VERIFY=true vault-enterprise vault write auth/approle/role/dotnet-api-role token_policies="tenant-reader"
+<span class="comment"># Create a role and bind the tenant-reader policy</span>
+docker exec -e VAULT_ADDR=https://127.0.0.1:8200 -e VAULT_SKIP_VERIFY=true vault-enterprise vault write auth/approle/role/dotnet-api-role token_policies="tenant-reader"</pre>
+            </div>
 
-:: Generate Credentials (Copy these for .NET)
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">PowerShell — Retrieve Credentials for .NET</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre><span class="comment"># Get the Role ID</span>
 docker exec -e VAULT_ADDR=https://127.0.0.1:8200 -e VAULT_SKIP_VERIFY=true vault-enterprise vault read auth/approle/role/dotnet-api-role/role-id
+
+<span class="comment"># Generate a Secret ID</span>
 docker exec -e VAULT_ADDR=https://127.0.0.1:8200 -e VAULT_SKIP_VERIFY=true vault-enterprise vault write -f auth/approle/role/dotnet-api-role/secret-id</pre>
-                    </div>
-                </div>
-            </section>
+            </div>
 
-            <section id="ui" class="section">
-                <div class="section-header">
-                    <h2><i class="fas fa-desktop"></i> Vault UI Management</h2>
-                </div>
-                <div class="section-content">
-                    <p>The GUI is available at <code>https://127.0.0.1:8200</code>. Log in with your <strong>Root Token</strong>.</p>
-                    <div class="strategy">
-                        <span class="strategy-tag tag-ui">UI ACTION</span>
-                        <strong>Managing Secrets:</strong> Navigate to <em>Secrets -> tenants</em>. Click on a secret to create a new version, or <em>Create Secret</em> to add a new tenant.
-                    </div>
-                    <div class="strategy">
-                        <span class="strategy-tag tag-ui">UI ACTION</span>
-                        <strong>Modifying Policies:</strong> Navigate to <em>Policies</em>. You can edit the <code>tenant-reader</code> HCL directly in the browser to add new paths.
-                    </div>
-                </div>
-            </section>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle" style="color:var(--primary)"></i>
+                <div>Copy the <strong>Role ID</strong> and <strong>Secret ID</strong> from the output into your .NET app configuration. These are the only credentials your application needs to authenticate with Vault at runtime.</div>
+            </div>
+        </div>
+    </section>
 
-            <section id="dotnet" class="section">
-                <div class="section-header">
-                    <h2><i class="fas fa-code"></i> .NET 9 Integration</h2>
-                </div>
-                <div class="section-content">
-                    <div class="code-block">
-                        <div class="code-header"><span class="code-filename">Program.cs (VaultSharp v1.17.5.1)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
-                        <pre>var vaultClientSettings = new VaultClientSettings(uri, authMethod)
+    <!-- ═══════════ SECTION 6: VAULT UI ═══════════ -->
+    <section id="ui" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-desktop"></i> Vault UI Management</h2>
+        </div>
+        <div class="section-content">
+            <p>The GUI is available at <code>https://127.0.0.1:8200</code>. Your browser will show a TLS warning because the cert is self-signed — click <strong>Advanced → Proceed</strong>. Log in with your <strong>Root Token</strong>.</p>
+
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle" style="color:var(--warning)"></i>
+                <div>The UI is only accessible after Vault has been <strong>unsealed</strong>. If you see a connection error or blank page, complete the unseal ceremony first.</div>
+            </div>
+
+            <div class="strategy">
+                <span class="strategy-tag tag-ui">UI ACTION</span>
+                <strong>Managing Secrets:</strong> Navigate to <em>Secrets → tenants</em>. Click an existing secret to add a new version, or <em>Create Secret</em> to add a new tenant.
+            </div>
+            <div class="strategy">
+                <span class="strategy-tag tag-ui">UI ACTION</span>
+                <strong>Modifying Policies:</strong> Navigate to <em>Policies</em>. Edit the <code>tenant-reader</code> HCL directly in the browser to add or change path permissions.
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════ SECTION 7: .NET INTEGRATION ═══════════ -->
+    <section id="dotnet" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-code"></i> .NET 9 Integration</h2>
+        </div>
+        <div class="section-content">
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Program.cs (VaultSharp v1.17.5.1)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>var vaultClientSettings = new VaultClientSettings(uri, authMethod)
 {
     PostProcessHttpClientHandlerAction = handler =>
     {
@@ -231,39 +418,85 @@ docker exec -e VAULT_ADDR=https://127.0.0.1:8200 -e VAULT_SKIP_VERIFY=true vault
     }
 };
 builder.Services.AddSingleton&lt;IVaultClient&gt;(new VaultClient(vaultClientSettings));</pre>
-                    </div>
-                </div>
-            </section>
-
-            <section id="trouble" class="section">
-                <div class="section-header">
-                    <h2><i class="fas fa-exclamation-triangle"></i> Troubleshooting</h2>
-                </div>
-                <div class="section-content troubleshoot">
-                    <ul>
-                        <li><strong>Unterminated Quoted String:</strong> Use <strong>CMD</strong> instead of PowerShell for <code>echo</code> commands.</li>
-                        <li><strong>Task vs Result:</strong> Ensure you <code>await</code> the service call in your Controller.</li>
-                        <li><strong>Property Errors:</strong> For VaultSharp 1.17.x, use <code>PostProcessHttpClientHandlerAction</code>.</li>
-                        <li><strong>SSL Warning in UI:</strong> This is expected with self-signed certs. Click <em>Advanced -> Proceed</em>.</li>
-                    </ul>
-                </div>
-            </section>
+            </div>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle" style="color:var(--primary)"></i>
+                <div>The <code>ServerCertificateCustomValidationCallback</code> bypasses TLS validation for the self-signed cert. For production, replace this with a CA-signed certificate or proper certificate pinning.</div>
+            </div>
         </div>
-    </main>
+    </section>
 
-    <a href="#" class="back-to-top" id="backToTop"><i class="fas fa-arrow-up"></i></a>
+    <!-- ═══════════ SECTION 8: TROUBLESHOOTING ═══════════ -->
+    <section id="trouble" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-exclamation-triangle"></i> Troubleshooting</h2>
+        </div>
+        <div class="section-content troubleshoot">
+            <ul>
+                <li>
+                    <strong>"stat /vault/config/vault: no such file or directory"</strong><br>
+                    The default image entrypoint strips the <code>.hcl</code> extension. Always use <code>--entrypoint sh</code> with <code>-c "vault server -config=/vault/config/vault.hcl"</code>. The provided <code>docker-compose.yml</code> already handles this correctly.
+                </li>
+                <li>
+                    <strong>"Error opening policy file: no such file or directory"</strong><br>
+                    The policy file was saved to the wrong location. It must be saved to <code>C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\vault-enterprise\config\policy.hcl</code> — not to <code>C:\vault-enterprise\</code> or any other path. Use the exact <code>Set-Content -Path</code> command in Section 4.
+                </li>
+                <li>
+                    <strong>"listen tcp4 0.0.0.0:8200: bind: address already in use"</strong><br>
+                    Run <code>netstat -ano | findstr :8200</code>. If state is <code>TIME_WAIT</code> with PID 0, there is no active process — wait ~60 seconds for the OS to release the socket, then retry. Also run <code>docker rm -f vault-enterprise</code> to clear any stopped container with that name before starting a new one.
+                </li>
+                <li>
+                    <strong>"Conflict. The container name '/vault-enterprise' is already in use"</strong><br>
+                    Run <code>docker rm -f vault-enterprise</code> first, then re-run your start command. With Docker Compose, use <code>docker compose down</code> followed by <code>docker compose up -d</code>.
+                </li>
+                <li>
+                    <strong>"permission denied" (403) on vault commands</strong><br>
+                    The token from a previous <code>vault login</code> does not carry over after the container is removed and recreated. Run <code>vault login</code> again after unsealing, or pass <code>-e VAULT_TOKEN=hvs.XXXX</code> explicitly on every admin <code>docker exec</code> command.
+                </li>
+                <li>
+                    <strong>"failed to parse policy: comment not terminated" (400)</strong><br>
+                    Caused by PowerShell mangling double quotes in <code>echo "..." | docker exec</code> pipelines. Use the file-based approach in Section 4: write the policy to <code>config\policy.hcl</code> with <code>Set-Content</code>, then apply it via <code>vault policy write tenant-reader /vault/config/policy.hcl</code>.
+                </li>
+                <li>
+                    <strong>"core: security barrier not initialized" in logs</strong><br>
+                    Normal on a fresh <code>data\</code> directory. Run <code>vault operator init</code> as described in Section 2.
+                </li>
+                <li>
+                    <strong>Vault is sealed after every restart</strong><br>
+                    By design. Run the unseal command 3 times with 3 different keys after every container start. Your secrets data is safe in <code>vault-enterprise\data\</code>.
+                </li>
+                <li>
+                    <strong>TLS handshake error / "tls: unknown certificate" in logs</strong><br>
+                    Expected with a self-signed cert. Always include <code>-e VAULT_SKIP_VERIFY=true</code> in all <code>docker exec</code> commands. In the browser, click <em>Advanced → Proceed</em>. Ensure the cert was generated with <code>-addext "subjectAltName=IP:127.0.0.1"</code>.
+                </li>
+                <li>
+                    <strong>Task vs Result error in .NET controller</strong><br>
+                    Ensure you <code>await</code> the VaultSharp service call. Missing <code>await</code> returns a <code>Task</code> object instead of the actual result.
+                </li>
+                <li>
+                    <strong>Property errors with VaultSharp</strong><br>
+                    For VaultSharp 1.17.x, use <code>PostProcessHttpClientHandlerAction</code> for TLS configuration. The older <code>MyHttpClientProviderFunc</code> property no longer exists in this version.
+                </li>
+            </ul>
+        </div>
+    </section>
 
-    <script>
-        function copyCode(button) {
-            const pre = button.parentElement.nextElementSibling;
-            navigator.clipboard.writeText(pre.innerText).then(() => {
-                button.innerText = 'Copied!';
-                setTimeout(() => button.innerText = 'Copy', 2000);
-            });
-        }
-        window.onscroll = function() {
-            document.getElementById('backToTop').style.display = window.scrollY > 300 ? 'flex' : 'none';
-        };
-    </script>
+</div>
+</main>
+
+<a href="#" class="back-to-top" id="backToTop"><i class="fas fa-arrow-up"></i></a>
+
+<script>
+    function copyCode(button) {
+        const pre = button.parentElement.nextElementSibling;
+        navigator.clipboard.writeText(pre.innerText).then(() => {
+            button.innerText = 'Copied!';
+            setTimeout(() => button.innerText = 'Copy', 2000);
+        });
+    }
+    window.onscroll = function() {
+        document.getElementById('backToTop').style.display = window.scrollY > 300 ? 'flex' : 'none';
+    };
+</script>
 </body>
 </html>

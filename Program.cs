@@ -3,6 +3,7 @@
 using IntegratedAPI.Auth;
 using IntegratedAPI.Contexts;
 using IntegratedAPI.Exceptions;
+using IntegratedAPI.HealthChecks;
 using IntegratedAPI.Models.DTOs;
 using IntegratedAPI.Services;
 using IntegratedAPI.Tenant_Management;
@@ -49,27 +50,15 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 });
 
-// Database Context with .NET 10 connection resilience
-builder.Services.AddDbContext<ProjectDbContext>(opt =>
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
+// Database Context factory with .NET 10 connection resilience
+builder.Services.AddScoped<TenantDbContextFactory>();
 
 builder.Services.AddOptions<StripeOptions>()
     .Bind(builder.Configuration.GetSection("StripeOptions"))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
-// .NET 10 ENHANCEMENT: Comprehensive health checks
-builder.Services.AddHealthChecks()
-    .AddSqlServer(
-        connectionString: builder.Configuration.GetConnectionString("DefaultConnection")!,
-        name: "sqlserver",
-        tags: new[] { "database", "ready" }
-    )
-    .AddDbContextCheck<ProjectDbContext>(
-        name: "dbcontext",
-        tags: new[] { "database", "efcore" }
-    );
+
 
 
 #region 🌐 + 🚪 CORS Section
@@ -214,32 +203,16 @@ var vaultClientSettings = new VaultClientSettings(config["Vault:Uri"]!, authMeth
 builder.Services.AddSingleton<IVaultClient>(new VaultClient(vaultClientSettings));
 builder.Services.AddScoped<IVaultService, VaultService>();
 
+// .NET 10 ENHANCEMENT: Comprehensive health checks
+builder.Services.AddHealthChecks()
+    .AddCheck<VaultSqlServerHealthCheck>(
+        name: "sqlserver-vault",
+        tags: new[] { "database", "ready" }
+    );
+
 #endregion
 
 var app = builder.Build();
-
-// .NET 10 ENHANCEMENT: Async database initialization
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ProjectDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-
-    try
-    {
-        // .NET 10: Async database creation with timeout
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await db.Database.EnsureCreatedAsync(cts.Token);
-        logger.LogInformation("Database initialized successfully");
-    }
-    catch (OperationCanceledException ex)
-    {
-        logger.LogError(ex, "Database initialization timed out");
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "An error occurred creating the database");
-    }
-}
 
 // Configure the HTTP request pipeline
 //if (app.Environment.IsDevelopment())

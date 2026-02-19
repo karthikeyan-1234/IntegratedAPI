@@ -17,16 +17,24 @@ namespace IntegratedAPI.Services
 
         public async Task<string?> GetConnectionString(string tenant)
         {
-            // KV-v2: path is tenant name, mountPoint is "tenants"
-            var secret = await _vaultClient.V1.Secrets.KeyValue.V2
-                .ReadSecretAsync(path: tenant.ToUpper(), mountPoint: "tenants");
-
-            if (secret.Data.Data.TryGetValue("connectionString", out var connStringObj))
+            try
             {
-                return connStringObj.ToString()!;
-            }
+                // KV-v2: path is tenant name, mountPoint is "tenants"
+                var secret = await _vaultClient.V1.Secrets.KeyValue.V2
+                    .ReadSecretAsync(path: tenant.ToUpper(), mountPoint: "tenants");
 
-            return null;
+                if (secret.Data.Data.TryGetValue("connectionString", out var connStringObj))
+                {
+                    return connStringObj.ToString()!;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex.Message);
+                return null;
+            }
         }
 
 

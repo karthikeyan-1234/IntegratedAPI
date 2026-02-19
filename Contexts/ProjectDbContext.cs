@@ -6,27 +6,13 @@ namespace IntegratedAPI.Contexts
 {
     public class ProjectDbContext: DbContext
     {
-        private readonly ITenantConnectionStringProvider? _connectionStringProvider;
 
         public DbSet<IntegratedAPI.Models.employee> Employees { get; set; }
         public DbSet<IntegratedAPI.Models.product> Products { get; set; }
         public DbSet<IntegratedAPI.Models.cartItem> CartItems { get; set; }
 
-        public ProjectDbContext(DbContextOptions<ProjectDbContext> options, ITenantConnectionStringProvider tenantConnectionStringProvider) : base(options)
+        public ProjectDbContext(DbContextOptions<ProjectDbContext> options) : base(options)
         {
-            _connectionStringProvider = tenantConnectionStringProvider;
-        }
-
-        protected override async void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            if (_connectionStringProvider != null)
-            {
-                var connectionString = await _connectionStringProvider.GetConnectionString();
-                if (!string.IsNullOrEmpty(connectionString))
-                {
-                    optionsBuilder.UseSqlServer(connectionString);
-                }
-            }
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
