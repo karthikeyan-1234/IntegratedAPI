@@ -19,17 +19,17 @@ namespace IntegratedAPI.Contexts
         {
             modelBuilder.Entity<IntegratedAPI.Models.employee>(e =>
             {
-                e.ToTable("employee");
+                e.ToTable("employees");
             });
 
             modelBuilder.Entity<IntegratedAPI.Models.product>(e =>
             {
-                e.ToTable("product");
+                e.ToTable("products");
             });
 
             modelBuilder.Entity<IntegratedAPI.Models.cartItem>(e =>
             {
-                e.ToTable("cartItem");
+                e.ToTable("cartItems");
             });
 
             modelBuilder.Entity<IntegratedAPI.Models.employee>(entity =>

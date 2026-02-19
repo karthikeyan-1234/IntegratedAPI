@@ -4,7 +4,7 @@
     {
         public string name { get; set; }
 
-        public float price { get; set; }
+        public double price { get; set; }
 
         public string image { get; set; }
 

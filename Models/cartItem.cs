@@ -4,7 +4,7 @@
         {
             public int id { get; set; }
             public int product_id { get; set; }
-            public float quantity { get; set; }
+            public double quantity { get; set; }
 
             public product? Product { get; set; }
         }
