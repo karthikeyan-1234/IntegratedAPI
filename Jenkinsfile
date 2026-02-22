@@ -82,8 +82,8 @@ pipeline {
                 script {
                     bat '''
                         kubectl cluster-info
-                        kubectl apply -f sqlserver-deploy.yml
-                        kubectl apply -f integratedapi-deploy.yml
+                        kubectl apply -f .\\YMLs\\sqlserver-deploy.yml
+                        kubectl apply -f .\\YMLs\\integratedapi-deploy.yml
                         kubectl rollout restart deployment/integratedapi-deployment
                         kubectl rollout status deployment/integratedapi-deployment
                         kubectl get pods -l app=sqlserver
