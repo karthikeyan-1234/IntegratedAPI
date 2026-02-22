@@ -1,0 +1,11 @@
+# 1. Install cert-manager CRDs and components
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.14.5/cert-manager.yaml
+
+# 2. Wait for cert-manager pods to be ready (this may take a minute)
+kubectl wait --namespace cert-manager `
+  --for=condition=ready pod `
+  --selector=app.kubernetes.io/instance=cert-manager `
+  --timeout=120s
+
+# 3. Verify cert-manager is installed
+kubectl get pods --namespace cert-manager

@@ -46,7 +46,7 @@ spec:
             - name: Keycloak__verify-token-audience
               value: "true"
             - name: Keycloak__credentials__secret
-              value: "b4HcDVKZxthP6dqCsRQvRPtSDenSCpUH"
+              value: "9HaBsP62lSIrCCFWxOkhWctbovDKkxq1"
             - name: Logging__Logstash__Url
               value: "http://logstash.elk.svc.cluster.local:5001/"
           readinessProbe:

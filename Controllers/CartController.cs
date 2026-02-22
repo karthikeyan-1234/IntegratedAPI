@@ -13,11 +13,11 @@ namespace IntegratedAPI.Controllers
     [Resource("Cart")]
     public class CartController : ControllerBase
     {
-        private ProjectDbContext _context;
+        private readonly TenantDbContextFactory _dbFactory;
 
-        public CartController(ProjectDbContext context)
+        public CartController(TenantDbContextFactory dbFactory)
         {
-            _context = context;
+            _dbFactory = dbFactory;
         }
 
         //Get all cart items as a list of CartItemInfo DTOs
@@ -25,6 +25,8 @@ namespace IntegratedAPI.Controllers
         [Permission("read")]
         public async Task<IActionResult> GetCartItemsAsync()
         {
+             ProjectDbContext _context = await _dbFactory.CreateAsync();
+
             var cartItems = from cartItem in _context.CartItems
                             join product in _context.Products
                             on cartItem.product_id equals product.id
@@ -34,6 +36,8 @@ namespace IntegratedAPI.Controllers
                                 quantity = cartItem.quantity
                             };
 
+            var _cartItems = await cartItems.ToListAsync();
+
             return Ok(await cartItems.ToListAsync());
         }
 
@@ -42,6 +46,8 @@ namespace IntegratedAPI.Controllers
         [Permission("create")]
         public async Task<IActionResult> AddCartItemAsync([FromBody] Models.DTOs.newCartItem newCartItem)
         {
+            ProjectDbContext _context = await _dbFactory.CreateAsync();
+
             // check if product exists
             var product = await _context.Products.FindAsync(newCartItem.product_id);
 
@@ -76,7 +82,9 @@ namespace IntegratedAPI.Controllers
         [Permission("delete")]
         public async Task<bool> DeleteCartItemAsync(int itemId)
         {
-            if(_context.CartItems != null)
+            ProjectDbContext _context = await _dbFactory.CreateAsync();
+
+            if (_context.CartItems != null)
             {
                 if(_context.CartItems.Any(x => x.product_id == itemId))
                 {

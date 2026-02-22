@@ -48,7 +48,6 @@ namespace IntegratedAPI.Contexts
 
             modelBuilder.Entity<IntegratedAPI.Models.cartItem>(entity =>
             {
-                entity.ToTable("cartItem");
                 entity.HasKey(e => e.id);
                 entity.Property(e => e.id).UseIdentityColumn();
                 entity.Property(e => e.product_id)
