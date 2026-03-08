@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault on Kubernetes – Enterprise Guide</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1976d2; --primary-dark: #1565c0; --primary-light: #e3f2fd;
+            --success: #4caf50; --warning: #ff9800; --danger: #f44336;
+            --light: #f5f5f5; --dark: #212121; --border: #e0e0e0;
+            --shadow: 0 2px 15px rgba(0,0,0,0.08); --radius: 8px;
+            --transition: all 0.3s ease; --sidebar-width: 280px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: var(--dark); display: flex; min-height: 100vh; background: #f8f9fa; }
+        .sidebar { width: var(--sidebar-width); background: linear-gradient(180deg, var(--primary-dark) 0%, var(--primary) 100%); color: white; padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; z-index: 1000; }
+        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-header h2 { font-size: 1.5rem; margin-bottom: 5px; }
+        .sidebar-header .version { font-size: 0.8rem; opacity: 0.7; }
+        .nav-section { margin: 25px 0; padding: 0 20px; }
+        .nav-title { font-size: 0.9rem; text-transform: uppercase; opacity: 0.7; margin-bottom: 15px; font-weight: 600; }
+        .nav-list { list-style: none; }
+        .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 15px; color: white; text-decoration: none; border-radius: 6px; transition: var(--transition); font-size: 0.95rem; }
+        .nav-link:hover { background: rgba(255,255,255,0.1); }
+        .nav-link.active { background: rgba(255,255,255,0.2); font-weight: 600; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 0; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 40px; }
+        .header { background: white; padding: 40px; margin-bottom: 40px; border-radius: var(--radius); box-shadow: var(--shadow); text-align: center; }
+        .header h1 { font-size: 2.5rem; color: var(--primary); margin-bottom: 10px; }
+        .header .basepath { display: inline-block; margin-top: 12px; background: #1e1e1e; color: #569cd6; padding: 8px 18px; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 0.95rem; }
+        .section { background: white; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 40px; overflow: hidden; }
+        .section-header { background: linear-gradient(135deg, var(--primary-light) 0%, white 100%); padding: 25px 40px; border-bottom: 1px solid var(--border); }
+        .section-header h2 { font-size: 1.6rem; color: var(--primary); display: flex; align-items: center; gap: 15px; }
+        .section-content { padding: 30px 40px; }
+        .code-block { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: var(--radius); overflow-x: auto; margin: 20px 0; font-family: 'Consolas', monospace; font-size: 0.9rem; }
+        .code-header { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .code-filename { color: #569cd6; font-size: 0.85rem; font-weight: bold; }
+        .copy-btn { background: #569cd6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+        .alert { padding: 15px 20px; border-radius: var(--radius); margin: 15px 0; display: flex; gap: 12px; align-items: flex-start; }
+        .alert-warning { background: #fff8e1; border-left: 4px solid var(--warning); }
+        .alert-danger  { background: #fff5f5; border-left: 4px solid var(--danger); }
+        .alert-success { background: #f1f8e9; border-left: 4px solid var(--success); }
+        .alert-info    { background: var(--primary-light); border-left: 4px solid var(--primary); }
+        .alert i { margin-top: 3px; flex-shrink: 0; }
+        .strategy { padding: 20px; border-radius: var(--radius); background: var(--light); border-left: 4px solid var(--primary); margin-bottom: 20px; }
+        .strategy-tag { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; color: white; margin-left: 10px; vertical-align: middle; }
+        .tag-ui { background: var(--warning); color: #333 !important; }
+        .troubleshoot { background: #fff5f5; border: 1px solid #feb2b2; padding: 25px; border-radius: var(--radius); }
+        .troubleshoot li { margin-bottom: 14px; }
+        .back-to-top { position: fixed; bottom: 30px; right: 30px; width: 45px; height: 45px; background: var(--primary); color: white; border-radius: 50%; display: none; align-items: center; justify-content: center; text-decoration: none; z-index: 100; }
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.9em; }
+        p { margin-bottom: 12px; }
+        .comment { color: #6a9955; }
+        .path-highlight { color: #ce9178; }
+        pre { margin: 0; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h2>Vault on K8s</h2>
+        <div class="version">v1.17.5.1 (.NET 9)</div>
+    </div>
+    <nav class="nav-section">
+        <div class="nav-title">Deployment Steps</div>
+        <ul class="nav-list">
+            <li><a href="#overview" class="nav-link active"><i class="fas fa-archway"></i> 1. Overview</a></li>
+            <li><a href="#prereq"   class="nav-link"><i class="fas fa-check-circle"></i> 2. Prerequisites</a></li>
+            <li><a href="#deploy"   class="nav-link"><i class="fas fa-cubes"></i> 3. Deploy Vault</a></li>
+            <li><a href="#init"     class="nav-link"><i class="fas fa-play-circle"></i> 4. Initialize</a></li>
+            <li><a href="#unseal"   class="nav-link"><i class="fas fa-key"></i> 5. Unseal</a></li>
+            <li><a href="#approle"  class="nav-link"><i class="fas fa-user-lock"></i> 6. AppRole</a></li>
+            <li><a href="#access"   class="nav-link"><i class="fas fa-globe"></i> 7. Access (Routing)</a></li>
+            <li><a href="#dotnet"   class="nav-link"><i class="fas fa-code"></i> 8. .NET Integration</a></li>
+            <li><a href="#trouble"  class="nav-link"><i class="fas fa-exclamation-triangle"></i> 9. Troubleshooting</a></li>
+        </ul>
+    </nav>
+</div>
+
+<main class="main-content">
+<div class="container">
+
+    <div class="header">
+        <h1>HashiCorp Vault on Kubernetes</h1>
+        <p>Production‑style deployment inside Docker Desktop Kubernetes with secure routing and .NET integration.</p>
+        <div class="basepath">📁 Manifests: C:\Users\mail2\source\repos\IntegratedAPP\IntegratedAPI\YMLs\vault</div>
+    </div>
+
+    <!-- ========= SECTION 1: OVERVIEW ========= -->
+    <section id="overview" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-archway"></i> Architecture Overview</h2>
+        </div>
+        <div class="section-content">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle" style="color:var(--primary)"></i>
+                <div>This guide deploys a single‑node Vault instance in the <code>vault</code> namespace, using a persistent volume for data. All manifests are stored under <code>YMLs\vault\</code>.</div>
+            </div>
+            <pre><strong>Target layout:</strong>
+Docker Desktop Kubernetes Cluster
+│
+├── namespace: vault
+│   ├── Vault Pod (StatefulSet‑ready)
+│   ├── Vault Service (ClusterIP)
+│   ├── PersistentVolumeClaim (2Gi)
+│   └── AppRole secrets (Kubernetes secret)
+│
+└── namespace: default
+    └── integratedapi pods → authenticate to Vault via AppRole</pre>
+        </div>
+    </section>
+
+    <!-- ========= SECTION 2: PREREQUISITES ========= -->
+    <section id="prereq" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-check-circle"></i> Prerequisites</h2>
+        </div>
+        <div class="section-content">
+            <ul>
+                <li>Docker Desktop with Kubernetes enabled (<code>Settings → Kubernetes → Enable</code>)</li>
+                <li><code>kubectl</code> installed and context set to <code>docker-desktop</code></li>
+                <li>Helm (optional, but we'll use raw YAMLs for clarity)</li>
+                <li>PowerShell 7+ (for <code>-SkipCertificateCheck</code> later)</li>
+            </ul>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Verify context</span></div>
+                <pre>kubectl config current-context   # should return docker-desktop</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========= SECTION 3: DEPLOY VAULT ========= -->
+    <section id="deploy" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-cubes"></i> Deploy Vault to Kubernetes</h2>
+        </div>
+        <div class="section-content">
+            <p>Create the namespace and all required resources. Each manifest is shown with its filename; apply them in order.</p>
+
+            <p><strong>3.1 Namespace</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">vault-namespace.yml</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>apiVersion: v1
+kind: Namespace
+metadata:
+  name: vault</pre>
+            </div>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Apply</span></div>
+                <pre>kubectl apply -f vault-namespace.yml</pre>
+            </div>
+
+            <p><strong>3.2 Persistent Volume Claim</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">vault-pvc.yml</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vault-pvc
+  namespace: vault
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi</pre>
+            </div>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Apply</span></div>
+                <pre>kubectl apply -f vault-pvc.yml</pre>
+            </div>
+
+            <p><strong>3.3 Vault Configuration (ConfigMap)</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">vault-configmap.yml</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-config
+  namespace: vault
+data:
+  vault.hcl: |
+    ui = true
+    listener "tcp" {
+      address       = "0.0.0.0:8200"
+      tls_disable   = 1                       # TLS disabled inside cluster; use Ingress for TLS
+    }
+    storage "file" {
+      path = "/vault/data"
+    }
+    api_addr = "http://vault-service.vault.svc.cluster.local:8200"</pre>
+            </div>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Apply</span></div>
+                <pre>kubectl apply -f vault-configmap.yml</pre>
+            </div>
+
+            <p><strong>3.4 Deployment</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">vault-deployment.yml</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault
+  namespace: vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault
+  template:
+    metadata:
+      labels:
+        app: vault
+    spec:
+      containers:
+      - name: vault
+        image: hashicorp/vault:1.15
+        args:
+          - "server"
+          - "-config=/vault/config/vault.hcl"
+        ports:
+          - containerPort: 8200
+        volumeMounts:
+          - name: vault-config
+            mountPath: /vault/config
+          - name: vault-storage
+            mountPath: /vault/data
+      volumes:
+        - name: vault-config
+          configMap:
+            name: vault-config
+        - name: vault-storage
+          persistentVolumeClaim:
+            claimName: vault-pvc</pre>
+            </div>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Apply</span></div>
+                <pre>kubectl apply -f vault-deployment.yml</pre>
+            </div>
+
+            <p><strong>3.5 Service (ClusterIP)</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">vault-service.yml</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>apiVersion: v1
+kind: Service
+metadata:
+  name: vault-service
+  namespace: vault
+spec:
+  selector:
+    app: vault
+  ports:
+    - port: 8200
+      targetPort: 8200
+  type: ClusterIP</pre>
+            </div>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Apply</span></div>
+                <pre>kubectl apply -f vault-service.yml</pre>
+            </div>
+
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle" style="color:var(--success)"></i>
+                <div>Verify everything is running:<br>
+                <code>kubectl get pods -n vault</code> (wait for Running)<br>
+                <code>kubectl get svc -n vault</code></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========= SECTION 4: INITIALIZE ========= -->
+    <section id="init" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-play-circle"></i> Initialize Vault</h2>
+        </div>
+        <div class="section-content">
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle" style="color:var(--danger)"></i>
+                <div><strong>One‑time only.</strong> After deployment, Vault is sealed and uninitialized. Run this exactly once. Store the 5 unseal keys and root token securely.</div>
+            </div>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Initialize</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>kubectl exec -it -n vault deploy/vault -- vault operator init</pre>
+            </div>
+            <p>Example output (save everything!):</p>
+            <div class="code-block">
+                <pre>Unseal Key 1: wJ6iZz8sxPq1...
+Unseal Key 2: LkH9fR3tG7...
+...
+Initial Root Token: hvs.ABC123...</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========= SECTION 5: UNSEAL ========= -->
+    <section id="unseal" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-key"></i> Unseal Ceremony</h2>
+        </div>
+        <div class="section-content">
+            <p>Vault starts sealed after every restart. Use three different unseal keys to unseal.</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Unseal (run 3 times with different keys)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>kubectl exec -it -n vault deploy/vault -- vault operator unseal</pre>
+            </div>
+            <p>After third key, status shows <code>Sealed: false</code>. Then log in with the root token:</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Login</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>kubectl exec -it -n vault deploy/vault -- vault login</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========= SECTION 6: APPROLE ========= -->
+    <section id="approle" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-user-lock"></i> AppRole Authentication</h2>
+        </div>
+        <div class="section-content">
+            <p>Enable AppRole, create a policy, and generate credentials for .NET.</p>
+
+            <p><strong>6.1 Enable AppRole</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Command</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>kubectl exec -n vault deploy/vault -- vault auth enable approle</pre>
+            </div>
+
+            <p><strong>6.2 Create a policy</strong> (using a file to avoid quoting issues).</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Create policy.hcl locally and apply</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre># On your machine, create a file policy.hcl:
+cat <<EOF > policy.hcl
+path "secret/data/integratedapi/*" {
+  capabilities = ["read"]
+}
+EOF
+
+# Copy file into the pod
+kubectl cp policy.hcl vault/&lt;vault-pod-name&gt;:/tmp/policy.hcl
+
+# Write policy
+kubectl exec -n vault deploy/vault -- vault policy write integratedapi-policy /tmp/policy.hcl</pre>
+            </div>
+
+            <p><strong>6.3 Create role and bind policy</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Command</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>kubectl exec -n vault deploy/vault -- vault write auth/approle/role/integratedapi-role token_policies="integratedapi-policy"</pre>
+            </div>
+
+            <p><strong>6.4 Retrieve Role ID and Secret ID</strong> (example values shown – replace with your own)</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Get Role ID</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>kubectl exec -n vault deploy/vault -- vault read auth/approle/role/integratedapi-role/role-id
+
+# Example output (hypothetical, replace with actual):
+Role ID: 8b3d9e2a-1f4c-4e7b-9a6d-3f2c1a8e5d7b</pre>
+            </div>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Generate Secret ID</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>kubectl exec -n vault deploy/vault -- vault write -f auth/approle/role/integratedapi-role/secret-id
+
+# Example output (hypothetical, replace with actual):
+Secret ID: 6a2c4f8e-9b1d-4a3c-8e5f-2d7b9c1a3e6d</pre>
+            </div>
+
+            <p><strong>6.5 Store credentials as Kubernetes secret (optional but recommended)</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Create secret</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>kubectl create secret generic vault-approle \
+  --namespace default \
+  --from-literal=role-id=8b3d9e2a-1f4c-4e7b-9a6d-3f2c1a8e5d7b \
+  --from-literal=secret-id=6a2c4f8e-9b1d-4a3c-8e5f-2d7b9c1a3e6d</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========= SECTION 7: ACCESS (ROUTING) ========= -->
+    <section id="access" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-globe"></i> Accessing Vault (Routing)</h2>
+        </div>
+        <div class="section-content">
+            <p>Once Vault is running, you need to reach it from your applications and for administration. Below are the common methods.</p>
+
+            <h3>Internal cluster access</h3>
+            <p>The service <code>vault-service.vault.svc.cluster.local:8200</code> is resolvable inside the cluster. Your .NET app can use this URL directly.</p>
+
+            <h3>Local port‑forward (for development)</h3>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Port‑forward to localhost:8200</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>kubectl port-forward -n vault svc/vault-service 8200:8200</pre>
+            </div>
+            <p>Then open <a href="http://localhost:8200" target="_blank">http://localhost:8200</a> to access the Vault UI (no TLS because we disabled it in config).</p>
+
+            <h3>Ingress (TLS‑secured external access)</h3>
+            <p>If you need to expose Vault outside the cluster with HTTPS, create an Ingress (requires an ingress controller, e.g., NGINX Ingress). Example:</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">vault-ingress.yml (optional)</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vault-ingress
+  namespace: vault
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - vault.local
+    secretName: vault-tls   # you must create this secret with cert/key
+  rules:
+  - host: vault.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: vault-service
+            port:
+              number: 8200</pre>
+            </div>
+            <p>Add <code>127.0.0.1 vault.local</code> to your hosts file and access <code>https://vault.local</code>.</p>
+
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle" style="color:var(--warning)"></i>
+                <div>For production, always enable TLS on Vault itself (set <code>tls_cert_file</code>/<code>tls_key_file</code> in <code>vault.hcl</code>) and use a proper CA.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========= SECTION 8: .NET INTEGRATION ========= -->
+    <section id="dotnet" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-code"></i> .NET 9 Integration (VaultSharp)</h2>
+        </div>
+        <div class="section-content">
+            <p>Add the <code>VaultSharp</code> NuGet package. Example configuration in <code>Program.cs</code>:</p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Program.cs</span><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+                <pre>using VaultSharp;
+using VaultSharp.V1.AuthMethods.AppRole;
+
+// Replace with your actual RoleId/SecretId (or load from k8s secrets)
+// HYPOTHETICAL EXAMPLE – use your own values from step 6.4
+string roleId = "8b3d9e2a-1f4c-4e7b-9a6d-3f2c1a8e5d7b";
+string secretId = "6a2c4f8e-9b1d-4a3c-8e5f-2d7b9c1a3e6d";
+
+var authMethod = new AppRoleAuthMethodInfo(roleId, secretId);
+var vaultClientSettings = new VaultClientSettings(
+    "http://vault-service.vault.svc.cluster.local:8200",
+    authMethod)
+{
+    PostProcessHttpClientHandlerAction = handler =>
+    {
+        if (handler is HttpClientHandler httpClientHandler)
+        {
+            // Bypass TLS verification if using self-signed certs (dev only)
+            httpClientHandler.ServerCertificateCustomValidationCallback =
+                (message, cert, chain, errors) => true;
+        }
+    }
+};
+
+builder.Services.AddSingleton&lt;IVaultClient&gt;(new VaultClient(vaultClientSettings));</pre>
+            </div>
+
+            <p><strong>Future API Deployment Changes (environment variables)</strong></p>
+            <div class="code-block">
+                <div class="code-header"><span class="code-filename">Deployment manifest snippet</span></div>
+                <pre>env:
+- name: Vault__Uri
+  value: "http://vault-service.vault.svc.cluster.local:8200"
+- name: Vault__RoleId
+  valueFrom:
+    secretKeyRef:
+      name: vault-approle
+      key: role-id
+- name: Vault__SecretId
+  valueFrom:
+    secretKeyRef:
+      name: vault-approle
+      key: secret-id</pre>
+            </div>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle" style="color:var(--primary)"></i>
+                The RoleId and SecretId shown above are <strong>hypothetical examples</strong>. Replace them with the actual values generated in your environment.
+            </div>
+        </div>
+    </section>
+
+    <!-- ========= SECTION 9: TROUBLESHOOTING ========= -->
+    <section id="trouble" class="section">
+        <div class="section-header">
+            <h2><i class="fas fa-exclamation-triangle"></i> Troubleshooting</h2>
+        </div>
+        <div class="section-content troubleshoot">
+            <ul>
+                <li><strong>Pod fails to start: "error reading config file"</strong> – Ensure the ConfigMap mount path matches <code>/vault/config/vault.hcl</code>. Check logs with <code>kubectl logs -n vault &lt;pod&gt;</code>.</li>
+                <li><strong>Vault stays sealed after unseal commands</strong> – You must run <code>vault operator unseal</code> three times with different keys. Verify status: <code>kubectl exec -n vault deploy/vault -- vault status</code>.</li>
+                <li><strong>Permission denied when reading secrets</strong> – Confirm the policy is attached to the role and the AppRole has the correct <code>token_policies</code>. Also ensure secrets exist under the correct path.</li>
+                <li><strong>Connection refused from .NET app</strong> – Check that the service name and namespace are correct: <code>vault-service.vault.svc.cluster.local</code>. Test from a temporary pod: <code>kubectl run -it --rm test --image=curlimages/curl -- curl http://vault-service.vault:8200/v1/sys/health</code>.</li>
+                <li><strong>Browser shows blank page / cannot connect</strong> – If using port-forward, ensure it’s running. If using Ingress, verify TLS secret and hosts file.</li>
+                <li><strong>"Vault is sealed" after cluster restart</strong> – Normal. Redeploy or just unseal again using the saved keys. The PVC persists the data.</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ========= BACK TO TOP ========= -->
+    <a href="#" class="back-to-top" id="backToTop"><i class="fas fa-arrow-up"></i></a>
+
+</div>
+</main>
+
+<script>
+    function copyCode(button) {
+        const pre = button.parentElement.nextElementSibling;
+        navigator.clipboard.writeText(pre.innerText).then(() => {
+            button.innerText = 'Copied!';
+            setTimeout(() => button.innerText = 'Copy', 2000);
+        });
+    }
+
+    window.onscroll = function() {
+        const btn = document.getElementById('backToTop');
+        btn.style.display = window.scrollY > 300 ? 'flex' : 'none';
+    };
+
+    // Smooth scroll and active nav highlighting
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            if (targetId === '#') return;
+            const target = document.querySelector(targetId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+
+    // Highlight active section in sidebar
+    const sections = document.querySelectorAll('section');
+    const navLinks = document.querySelectorAll('.nav-link');
+    window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop - 100;
+            const sectionBottom = sectionTop + section.offsetHeight;
+            if (window.scrollY >= sectionTop && window.scrollY < sectionBottom) {
+                current = section.getAttribute('id');
+            }
+        });
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === `#${current}`) {
+                link.classList.add('active');
+            }
+        });
+    });
+</script>
+</body>
+</html>

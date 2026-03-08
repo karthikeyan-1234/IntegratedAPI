@@ -1,0 +1,82 @@
+# Updated vault-complete.yml (replace the deployment section)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault-deployment
+  namespace: vault
+  labels:
+    app: vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault
+  template:
+    metadata:
+      labels:
+        app: vault
+    spec:
+      containers:
+      - name: vault
+        image: hashicorp/vault:latest
+        ports:
+        - containerPort: 8200
+          name: http
+        - containerPort: 8201
+          name: cluster
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            cp /vault/config-temp/vault.hcl /vault/config/vault.hcl
+            chmod 644 /vault/config/vault.hcl
+            exec vault server -config=/vault/config/vault.hcl
+        env:
+        - name: VAULT_ADDR
+          value: "http://127.0.0.1:8200"
+        - name: VAULT_API_ADDR
+          value: "http://$(POD_IP):8200"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        securityContext:
+          capabilities:
+            add:
+            - IPC_LOCK
+          runAsUser: 100
+          runAsGroup: 1000
+        volumeMounts:
+        - name: vault-config-temp
+          mountPath: /vault/config-temp
+          readOnly: true
+        - name: vault-config
+          mountPath: /vault/config
+        - name: vault-data
+          mountPath: /vault/data
+        - name: vault-logs
+          mountPath: /vault/logs
+        livenessProbe:
+          httpGet:
+            path: /v1/sys/health
+            port: 8200
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /v1/sys/health
+            port: 8200
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: vault-config-temp
+        configMap:
+          name: vault-config
+      - name: vault-config
+        emptyDir: {}
+      - name: vault-data
+        persistentVolumeClaim:
+          claimName: vault-data-pvc
+      - name: vault-logs
+        persistentVolumeClaim:
+          claimName: vault-logs-pvc
