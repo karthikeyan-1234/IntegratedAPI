@@ -1,3 +1,4 @@
+#region using section
 using Confluent.Kafka;
 
 using IntegratedAPI.Auth;
@@ -31,7 +32,7 @@ using System.Text.Json;
 using VaultSharp;
 using VaultSharp.V1.AuthMethods;
 using VaultSharp.V1.AuthMethods.AppRole;
-
+#endregion
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -214,6 +215,9 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
+
+
 // Configure the HTTP request pipeline
 //if (app.Environment.IsDevelopment())
 {
@@ -314,7 +318,6 @@ var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 lifetime.ApplicationStarted.Register(() =>
     app.Logger.LogInformation("Application started and metrics available at /metrics"));
 
-app.UseExceptionHandler();
 
 
 
