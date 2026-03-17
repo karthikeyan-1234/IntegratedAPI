@@ -54,13 +54,11 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 // Database Context factory with .NET 10 connection resilience
 builder.Services.AddScoped<TenantDbContextFactory>();
 
+//Options pattern. Using AddOptions so that DataValidation annotations on StripeOptions class kicks in and fails on app load
 builder.Services.AddOptions<StripeOptions>()
-    .Bind(builder.Configuration.GetSection("StripeOptions"))
-    .ValidateDataAnnotations()
-    .ValidateOnStart();
-
-
-
+    .Bind.Configuration.GetSection("StripeOptions")) // Alternatively use .BindConfiguration("StripeOptions") [.NET 9 way]
+    .ValidateDataAnnotations() // Validates the data annotations based on attributes set on StripeOptions
+    .ValidateOnStart(); // Does the validation at the Start
 
 #region 🌐 + 🚪 CORS Section
 
