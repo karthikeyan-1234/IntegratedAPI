@@ -1,13 +1,87 @@
+# ============================================================
+# kong-integrated-final-v4.yml
+# Kong 3.8 + KIC 3.3 + Postgres 15
+# Fixes: Admin API Connectivity, CORS, and GUI API URL
+# ============================================================
+
 # ------------------------------------------------------------
-# Namespace
+# 1. Namespace & Full RBAC
 # ------------------------------------------------------------
 apiVersion: v1
 kind: Namespace
 metadata:
   name: kong
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kong-serviceaccount
+  namespace: kong
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kong-ingress-clusterrole
+rules:
+  - apiGroups: [""]
+    resources: ["endpoints", "nodes", "pods", "secrets", "services", "configmaps", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch", "update"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "ingressclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses/status"]
+    verbs: ["update"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["configuration.konghq.com"]
+    resources:
+      - kongplugins
+      - kongclusterplugins
+      - kongconsumers
+      - kongconsumergroups
+      - kongingresses
+      - kongupstreams
+      - kongtargets
+      - kongupstreampolicies
+      - kongvaults
+      - kongcustomentities
+      - ingressclassparameters
+      - tcpingresses
+      - udpingresses
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["configuration.konghq.com"]
+    resources: ["tcpingresses/status", "udpingresses/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["gateways", "httproutes", "grpcroutes", "referencegrants", "gatewayclasses"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kong-ingress-clusterrole-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kong-ingress-clusterrole
+subjects:
+  - kind: ServiceAccount
+    name: kong-serviceaccount
+    namespace: kong
+---
 # ------------------------------------------------------------
-# PostgreSQL PVC
+# 2. Database (Postgres)
 # ------------------------------------------------------------
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -15,15 +89,11 @@ metadata:
   name: postgres-pvc
   namespace: kong
 spec:
-  accessModes:
-    - ReadWriteOnce
+  accessModes: [ReadWriteOnce]
   resources:
     requests:
       storage: 2Gi
 ---
-# ------------------------------------------------------------
-# PostgreSQL Deployment
-# ------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -42,8 +112,6 @@ spec:
       containers:
       - name: postgres
         image: postgres:15-alpine
-        ports:
-        - containerPort: 5432
         env:
         - name: POSTGRES_USER
           value: kong
@@ -51,19 +119,9 @@ spec:
           value: kong123
         - name: POSTGRES_DB
           value: kong
-        - name: PGDATA
-          value: /var/lib/postgresql/data/pgdata
-        volumeMounts:
-        - name: postgres-storage
-          mountPath: /var/lib/postgresql/data
-      volumes:
-      - name: postgres-storage
-        persistentVolumeClaim:
-          claimName: postgres-pvc
+        ports:
+        - containerPort: 5432
 ---
-# ------------------------------------------------------------
-# PostgreSQL Service
-# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
@@ -74,9 +132,10 @@ spec:
     app: postgres
   ports:
   - port: 5432
+    targetPort: 5432
 ---
 # ------------------------------------------------------------
-# Kong Migration Job
+# 3. Migration Job
 # ------------------------------------------------------------
 apiVersion: batch/v1
 kind: Job
@@ -84,14 +143,9 @@ metadata:
   name: kong-migration-job
   namespace: kong
 spec:
-  backoffLimit: 3
   template:
     spec:
       restartPolicy: OnFailure
-      initContainers:
-      - name: wait-for-postgres
-        image: postgres:15-alpine
-        command: ["sh", "-c", "until pg_isready -h postgres -U kong; do sleep 2; done"]
       containers:
       - name: kong-migration
         image: kong:3.8
@@ -109,7 +163,7 @@ spec:
           value: kong
 ---
 # ------------------------------------------------------------
-# Kong Deployment (HTTP ONLY)
+# 4. Kong Stack (Gateway + Controller Sidecar)
 # ------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
@@ -126,6 +180,16 @@ spec:
       labels:
         app: kong
     spec:
+      serviceAccountName: kong-serviceaccount
+      initContainers:
+      - name: wait-for-migration
+        image: postgres:15-alpine
+        command:
+          - sh
+          - -c
+          - |
+            until pg_isready -h postgres -U kong -d kong; do echo "Waiting for Postgres..."; sleep 2; done
+            until PGPASSWORD=kong123 psql -h postgres -U kong -d kong -c "\dt workspaces" | grep workspaces; do echo "Waiting for Migrations..."; sleep 5; done
       containers:
       - name: kong
         image: kong:3.8
@@ -140,34 +204,55 @@ spec:
           value: kong123
         - name: KONG_PG_DATABASE
           value: kong
-
-        # 🔴 HTTP ONLY: Remove SSL from proxy
         - name: KONG_PROXY_LISTEN
-          value: "0.0.0.0:8000"
-
-        # Admin (unchanged)
+          value: 0.0.0.0:8000
+        # Updated Admin Listen to include SSL and support CORS
         - name: KONG_ADMIN_LISTEN
-          value: "0.0.0.0:8001"
-
-        # Manager UI - Change URLs to HTTP
-        - name: KONG_ADMIN_GUI_LISTEN
-          value: "0.0.0.0:8002"
+          value: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
+        - name: KONG_MANAGER_LISTEN
+          value: 0.0.0.0:8002
+        # Critical Fixes for GUI Connectivity
         - name: KONG_ADMIN_GUI_URL
           value: "http://kong-ui.local"
         - name: KONG_ADMIN_GUI_API_URL
           value: "http://kong-admin.local"
-
+        - name: KONG_ADMIN_CORS
+          value: "on"
+        - name: KONG_ADMIN_CORS_ORIGINS
+          value: "*"
         ports:
-        - containerPort: 8000
-          name: http-proxy
-        - containerPort: 8001
-          name: admin
-        - containerPort: 8002
-          name: manager
-        # Removed: hostPort bindings as they're not needed for HTTP-only
+        - name: proxy
+          containerPort: 8000
+        - name: admin
+          containerPort: 8001
+        - name: manager
+          containerPort: 8002
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: 8001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      - name: ingress-controller
+        image: kong/kubernetes-ingress-controller:3.3
+        env:
+        - name: CONTROLLER_KONG_ADMIN_URL
+          value: "http://localhost:8001"
+        - name: CONTROLLER_INGRESS_CLASS
+          value: kong
+        - name: CONTROLLER_PUBLISH_SERVICE
+          value: "kong/kong-proxy"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
 ---
 # ------------------------------------------------------------
-# Kong Proxy Service (HTTP ONLY)
+# 5. Services & Ingress
 # ------------------------------------------------------------
 apiVersion: v1
 kind: Service
@@ -175,17 +260,14 @@ metadata:
   name: kong-proxy
   namespace: kong
 spec:
+  type: LoadBalancer
   selector:
     app: kong
   ports:
-  - name: http
+  - name: proxy
     port: 80
     targetPort: 8000
-  # 🔴 Removed: HTTPS port since we're HTTP-only
 ---
-# ------------------------------------------------------------
-# Kong Admin Service (unchanged)
-# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
@@ -195,12 +277,10 @@ spec:
   selector:
     app: kong
   ports:
-  - port: 8001
+  - name: admin
+    port: 8001
     targetPort: 8001
 ---
-# ------------------------------------------------------------
-# Kong Manager Service (unchanged)
-# ------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
@@ -210,75 +290,28 @@ spec:
   selector:
     app: kong
   ports:
-  - port: 8002
+  - name: manager
+    port: 8002
     targetPort: 8002
 ---
-# ------------------------------------------------------------
-# Ingress: Kong Proxy (DATA PLANE) - HTTP ONLY
-# ------------------------------------------------------------
 apiVersion: networking.k8s.io/v1
-kind: Ingress
+kind: IngressClass
 metadata:
-  name: kong-proxy-ingress
-  namespace: kong
-  annotations:
-    # 🔴 Removed: cert-manager annotations for HTTP-only
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  name: kong
 spec:
-  ingressClassName: nginx
-  # 🔴 Removed: TLS section for HTTP-only
-  rules:
-  - host: kong-proxy.local
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: kong-proxy
-            port:
-              number: 80
+  controller: konghq.com/ingress-controller
 ---
-# ------------------------------------------------------------
-# Ingress: Kong Admin API (CONTROL PLANE) - HTTP ONLY
-# ------------------------------------------------------------
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: kong-admin-ingress
-  namespace: kong
-  annotations:
-    # 🔴 Removed: cert-manager annotations for HTTP-only
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-spec:
-  ingressClassName: nginx
-  # 🔴 Removed: TLS section for HTTP-only
-  rules:
-  - host: kong-admin.local
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: kong-admin
-            port:
-              number: 8001
----
-# ------------------------------------------------------------
-# Ingress: Kong Manager UI - HTTP ONLY
-# ------------------------------------------------------------
+# Ingress for the Manager UI
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: kong-ui-ingress
   namespace: kong
   annotations:
-    # 🔴 Removed: cert-manager annotations for HTTP-only
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    konghq.com/strip-path: "false"
+    konghq.com/preserve-host: "true"
 spec:
-  ingressClassName: nginx
-  # 🔴 Removed: TLS section for HTTP-only
+  ingressClassName: kong
   rules:
   - host: kong-ui.local
     http:
@@ -290,3 +323,26 @@ spec:
             name: kong-manager
             port:
               number: 8002
+---
+# Ingress for the Admin API (Required for the UI to fetch data)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kong-admin-ingress
+  namespace: kong
+  annotations:
+    konghq.com/strip-path: "false"
+    konghq.com/preserve-host: "true"
+spec:
+  ingressClassName: kong
+  rules:
+  - host: kong-admin.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kong-admin
+            port:
+              number: 8001

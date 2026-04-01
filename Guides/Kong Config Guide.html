@@ -145,6 +145,7 @@
 <body>
     <div class="container">
         <h1>🚀 Kong Gateway Configuration Guide for Integrated API</h1>
+		<h2><font color="red";><blink><i> [With the new Kong deployment yml, ingress is handled by Kong itself. Don't use ngnix] </i></blink></font></h2>
         
         <div class="header-info">
             <h2>📋 Prerequisites and Environment</h2>
@@ -200,7 +201,7 @@
         <div class="quick-start">
             <h3>⚡ Quick Start - Next Steps After Kong Installation</h3>
             <ol>
-                <li><strong>Install Ingress Controller</strong> (if not already done)</li>
+                <li><strong>Install Ingress Controller</strong> (if not already done) <blink><font color="red";><u><strong>With new yml, this is no longer needed</strong></u></font></blink></li>
                 <li><strong>Update hosts file</strong> to add kong-admin.local and kong-proxy.local</li>
                 <li><strong>Verify Kong is accessible</strong> at http://kong-admin.local/status</li>
                 <li><strong>Register your API service</strong> in Kong</li>
@@ -210,7 +211,7 @@
             </ol>
         </div>
 
-        <h2>🔧 Step 0: Setup Ingress Controller (If Not Already Installed)</h2>
+        <h2>🔧 Step 0: Setup Ingress Controller (If Not Already Installed)<font color="red";><i> [Not needed with new yml] </i></font></h2>
         
         <div class="note">
             <strong>Note:</strong> If you already have an Ingress Controller installed (like Nginx Ingress), skip this step. Otherwise, install it first.

@@ -13,3 +13,4 @@ obj/
 *.log
 *.tmp
 /Test HPA.ps1
+/YMLs/ingress.yml
